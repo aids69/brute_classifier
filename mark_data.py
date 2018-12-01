@@ -35,24 +35,30 @@ def count_word(user, words):
     return counter
 
 
-# make key words' order random for cases with more than 1 max
-keys = list(key_words.keys())
-random.shuffle(keys)
+def mark_next_free_person():
+    # make key words' order random for cases with more than 1 max
+    keys = list(key_words.keys())
+    random.shuffle(keys)
 
-current_user = get_user(cursor)
+    current_user = get_user(cursor)
 
-max = 0
-most_freq_word_id = -1
-for key in keys:
-    current_word_frequency = count_word(current_user, key_words[key])
-    if current_word_frequency >= max:
-        max = current_word_frequency
-        most_freq_word_id = key
+    max = 0
+    most_freq_word_id = -1
+    for key in keys:
+        current_word_frequency = count_word(current_user, key_words[key])
+        if current_word_frequency >= max:
+            max = current_word_frequency
+            most_freq_word_id = key
 
-if max == 0:
-    print('Could not find anything, adding random present for user_id=' + str(current_user['id']))
-else:
-    assign_present(cursor, current_user['id'], most_freq_word_id)
+    if max == 0:
+        print('Could not find anything, adding random present for user_id=' + str(current_user['id']))
+    else:
+        print(key_words[most_freq_word_id])
+        assign_present(cursor, current_user['id'], most_freq_word_id)
+
+
+for i in range(0, 5):
+    mark_next_free_person()
 
 
 db.commit()
