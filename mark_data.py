@@ -1,6 +1,6 @@
 import sqlite3
 import random
-from db_api import get_key_words, get_user, assign_present
+from db_api import get_key_words, get_user, assign_present, drop_presents
 
 db = sqlite3.connect('db/users.db')
 cursor = db.cursor()
@@ -53,13 +53,13 @@ def mark_next_free_person():
     if max == 0:
         print('Could not find anything, adding random present for user_id=' + str(current_user['id']))
     else:
-        print(key_words[most_freq_word_id])
+        print('https://vk.com/id' + str(current_user['id']), key_words[most_freq_word_id])
         assign_present(cursor, current_user['id'], most_freq_word_id)
 
 
-for i in range(0, 5):
+for i in range(0, 40):
     mark_next_free_person()
-
+drop_presents(cursor)
 
 db.commit()
 db.close()

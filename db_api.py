@@ -43,7 +43,7 @@ def get_user(crs):
     current_user = all_users.fetchone()
 
     # looking for user without present and with groups
-    while current_user[117] or current_user[18] == '-':
+    while current_user[117] or current_user[18] == '-' or len(current_user[18].split(',')) < 10:
         current_user = all_users.fetchone()
 
     params = {
@@ -69,4 +69,9 @@ def get_user(crs):
 def assign_present(crs, id, present_id):
     """Adds present for specified user"""
     crs.execute('UPDATE users SET present_id = ' + str(present_id) + ' WHERE id = ' + str(id))
+
+
+def drop_presents(crs):
+    """Resets presents column to empty"""
+    crs.execute('UPDATE users SET present_id = NULL')
 
