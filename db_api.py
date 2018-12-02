@@ -75,3 +75,9 @@ def drop_presents(crs):
     """Resets presents column to empty"""
     crs.execute('UPDATE users SET present_id = NULL')
 
+
+def add_prediction(crs, id, present_id):
+    """Adds brute prediction"""
+    crs.execute('INSERT OR IGNORE INTO classes(person_id, brute) VALUES(' +
+                str(id) + ', ' + str(present_id) + ')')
+    # crs.execute('UPDATE classes SET brute = ' + str(present_id) + ' WHERE person_id = ' + str(id))

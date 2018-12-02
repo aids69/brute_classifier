@@ -1,6 +1,6 @@
 import sqlite3
 import random
-from db_api import get_key_words, get_user, assign_present, drop_presents
+from db_api import get_key_words, get_user, assign_present, drop_presents, add_prediction
 
 db = sqlite3.connect('db/users.db')
 cursor = db.cursor()
@@ -12,9 +12,18 @@ def count_word(user, words):
     """Counts substrings of words in user profile and can get maximum +1 count for each community"""
     counter = 0
 
+    idx = 0
     for comm in user['communities']:
         if any([s for s in comm if any(xs in s for xs in words)]):
-            counter += 1
+            if idx <= 5:
+                counter += 1
+            elif idx <= 10:
+                counter += 0.25
+            elif idx <= 20:
+                counter += 0.1
+            else:
+                counter += 0.01
+        idx += 1
 
     informative_fields = ['about', 'activities', 'interests', 'inspired_by', 'status']
     for field in informative_fields:
@@ -55,11 +64,12 @@ def mark_next_free_person():
     else:
         print('https://vk.com/id' + str(current_user['id']), key_words[most_freq_word_id])
         assign_present(cursor, current_user['id'], most_freq_word_id)
+        add_prediction(cursor, current_user['id'], most_freq_word_id)
 
 
-for i in range(0, 40):
+for i in range(0, 180):
     mark_next_free_person()
-drop_presents(cursor)
+# drop_presents(cursor)
 
 db.commit()
 db.close()
