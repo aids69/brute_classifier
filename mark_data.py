@@ -15,11 +15,15 @@ def count_word(user, words):
     idx = 0
     for comm in user['communities']:
         if any([s for s in comm if any(xs in s for xs in words)]):
-            if idx <= 5:
+            if idx == 0:
+                counter += 42
+            elif idx <= 2:
+                counter += 40
+            elif idx <= 4:
+                counter += 16
+            elif idx <= 7:
                 counter += 1
-            elif idx <= 10:
-                counter += 0.25
-            elif idx <= 20:
+            elif idx <= 25:
                 counter += 0.1
             else:
                 counter += 0.01
@@ -28,7 +32,7 @@ def count_word(user, words):
     informative_fields = ['about', 'activities', 'interests', 'inspired_by', 'status']
     for field in informative_fields:
         if field in user.keys():
-            counter += sum(any(xs in s for xs in words) for s in user[field])
+            counter += 3 * sum(any(xs in s for xs in words) for s in user[field])
 
     # authors or movie names do not correlate with our key words so we add plus one for being filled
     half_informative_fields = {
@@ -67,9 +71,10 @@ def mark_next_free_person():
         add_prediction(cursor, current_user['id'], most_freq_word_id)
 
 
+# drop_presents(cursor)
 for i in range(0, 180):
     mark_next_free_person()
-# drop_presents(cursor)
+
 
 db.commit()
 db.close()
