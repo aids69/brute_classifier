@@ -2,7 +2,7 @@
 Brute force classifier for analyzing quality of main classifier
 
 ## key words we use for marking data (Dec 2)
-1 - мужчин мужик брутал мужск арми бокс рукопаш воен джентельм кача барбер кальян рыбалк охот гараж футбол лиг мяч
+1 - мужчин мужик брутал мужск арми бокс рукопаш воен джентельм кача барбер кальян рыбалк охот гараж футбол мяч
 
 2 - кошк коты коти cat собак бездомн приют животн
 
@@ -10,7 +10,7 @@ Brute force classifier for analyzing quality of main classifier
 
 4 - кондитер рецепт кулинар вкусн рукодел шить блюда вышивк кройк вязан cook handmade
 
-5 - рик морти мульт гик geek adventure nerd cartoon
+5 - морти мульт гик geek adventure nerd cartoon nintendo capcom настол
 
 6 - спорт фитнес похуд тело трениров физкультур body gym workout basket баскет гандбол плавани пловец гимнаст бодибилд мотивация хоккей
 
@@ -22,7 +22,7 @@ Brute force classifier for analyzing quality of main classifier
 
 10 - музык аудио концерт music radio радио микс альбом jazz cover акустик гитар drum kpop кпоп
 
-11 - мам семь семей родител брак уют беремен материн домаш воспитан
+11 - мам семь семей родител брак беремен материн воспитан детск
 
 12 - тату татуировк татуаж tattoo
 
@@ -46,7 +46,7 @@ Brute force classifier for analyzing quality of main classifier
 
 22 - авто машин шины дороги дорогах ралли дтп внедорожн
 
-23 - программ dev habr тестир code coding develop разраб математик math
+23 - программ dev habr тестир code coding develop разраб математик math яндекс
 
 24 - книг book книжн литератур
 
@@ -66,4 +66,4 @@ Brute force classifier for analyzing quality of main classifier
 
 32 - велосипед
 
-33 - активн сноуборд альпини скалолаз страйкбол лазертаг gopro прогулк антикафе скалодром турклуб поход горнолыж
+33 - активн сноуборд альпини скалолаз страйкбол лазертаг gopro прогулк антикафе скалодром турклуб поход горнолыж лыж

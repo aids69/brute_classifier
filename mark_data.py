@@ -12,21 +12,35 @@ def count_word(user, words):
     """Counts substrings of words in user profile and can get maximum +1 count for each community"""
     counter = 0
 
+    # 1 - female, 2 - male
+    if 'sex' in user.keys() and user['sex'] == 1 and 'мужчин' in words:
+        return 0
+
+    if 'sex' in user.keys() and user['sex'] == 2 and 'макияж' in words:
+        return 0
+
+    if 'sex' in user.keys() and user['sex'] == 2 and 'девочк' in words:
+        return 0
+
+    if 'sex' in user.keys() and user['sex'] == 2 and 'мам' in words:
+        return 0
+
+
     idx = 0
     for comm in user['communities']:
         if any([s for s in comm if any(xs in s for xs in words)]):
             if idx == 0:
-                counter += 42
-            elif idx <= 2:
-                counter += 40
+                counter += 30
+            elif idx < 2:
+                counter += 28
             elif idx <= 4:
-                counter += 16
+                counter += 5
             elif idx <= 7:
                 counter += 1
             elif idx <= 25:
                 counter += 0.1
             else:
-                counter += 0.01
+                counter += 0
         idx += 1
 
     informative_fields = ['about', 'activities', 'interests', 'inspired_by', 'status']
@@ -72,7 +86,7 @@ def mark_next_free_person():
 
 
 # drop_presents(cursor)
-for i in range(0, 180):
+for i in range(0, 2000):
     mark_next_free_person()
 
 

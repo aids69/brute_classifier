@@ -5,6 +5,9 @@ pattern = re.compile('([^\s\w]|_)+')
 
 def _format_string(str):
     """Removes special characters and numbers and returns list of words"""
+    if isinstance(str, int):
+        return str
+
     new_str = ' '.join(str.split('\\n'))
     new_str = re.sub(r'\d+', '', pattern.sub('', new_str.lower()))
     return list(filter(None, new_str.split()))
@@ -49,7 +52,7 @@ def get_user(crs):
     params = {
         4: 'about', 5: 'activities', 7: 'books',
         30: 'games', 37: 'interests', 48: 'movies', 49: 'music',
-        60: 'inspired_by', 65: 'quotes', 88: 'status'
+        60: 'inspired_by', 65: 'quotes', 85: 'sex', 88: 'status'
     }
     fields = {'id': current_user[0]}
 
