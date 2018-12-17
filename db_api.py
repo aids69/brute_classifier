@@ -84,3 +84,36 @@ def add_prediction(crs, id, present_id):
     crs.execute('INSERT OR IGNORE INTO classes(person_id, brute) VALUES(' +
                 str(id) + ', ' + str(present_id) + ')')
     # crs.execute('UPDATE classes SET brute = ' + str(present_id) + ' WHERE person_id = ' + str(id))
+
+
+def get_records_by_field(crs, field_name):
+    """Gets non-empty data by field from all users"""
+    if field_name != 'communities':
+        users = crs.execute('SELECT id, ' + field_name + ' FROM users WHERE ' + field_name + ' IS NOT NULL')
+        all_users = users.fetchall()
+
+        for idx, user in enumerate(all_users):
+            all_users[idx] = tuple([user[0], _format_string(user[1])])
+    else:
+        users = crs.execute('SELECT id, communities FROM users WHERE communities <> "-"')
+        all_users = users.fetchall()
+        all_users = [x for x in all_users if x[1]]
+        # slicing the list down to 5%
+        all_users = all_users[: int(len(all_users) * .05)]
+        print('total:', len(all_users))
+
+        for idx, user in enumerate(all_users):
+            if idx % 5000 == 0:
+                print(str(100*idx/len(all_users)) + '%')
+            # getting only first 60 communities because my pc dies
+            communities = user[1].split(',')[:60]
+            communities_info = [None] * len(communities)
+            for i, id in enumerate(communities):
+                if id:
+                    communities_info[i] = _get_group_info(crs, id)
+            communities_info = [item for sublist in communities_info for item in sublist]
+            all_users[idx] = tuple([user[0], communities_info])
+
+    # filtering empty strings because they are not NULL
+    all_users = [x for x in all_users if x[1]]
+    return all_users
