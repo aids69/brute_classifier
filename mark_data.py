@@ -86,7 +86,7 @@ def mark_next_free_person():
 
 
 # drop_presents(cursor)
-for i in range(0, 2000):
+for i in range(0, 100):
     mark_next_free_person()
 
 

@@ -117,3 +117,35 @@ def get_records_by_field(crs, field_name):
     # filtering empty strings because they are not NULL
     all_users = [x for x in all_users if x[1]]
     return all_users
+
+
+def _create_sql_values(ids, values):
+    """Creates concatenated string of values so there's no need to call INSERT in loop"""
+    arr = []
+    arr.extend(['(' + str(ids[i]) + ',' + str(values[i]) + ')' for i in range(len(ids))])
+    return ','.join(arr)
+
+
+def add_cluster(crs, cluster_name, value, id):
+    """Adds predicted cluster to classes table for specific id"""
+    cluster_name += '_cluster'
+    crs.execute('INSERT OR IGNORE INTO classes(person_id, ' + cluster_name
+                + ') VALUES ' + '(' + str(id) + ',' + str(value) + ')')
+    # if id's already in the table, we need to update
+    if crs.rowcount == 0:
+        crs.execute('UPDATE classes SET ' + cluster_name +
+                    ' = ' + str(value) + ' WHERE person_id = ' + str(id))
+
+
+def create_cluster_info(crs, cluster_name, key_words_arr):
+    """Adds cluster to the cluster table and sets key words per each cluster"""
+    clusters_amount = len(key_words_arr)
+    res_str = ''
+    for i in range(clusters_amount):
+        res_str += str(i) + ': ' + ' '.join(key_words_arr[i])
+        if i != clusters_amount - 1:
+            res_str += ', '
+
+    crs.execute('INSERT OR IGNORE INTO clusters(name, amount_of_clusters, cluster_values) VALUES("' +
+                str(cluster_name) + '", ' + str(clusters_amount) + ', "' + res_str + '")')
+
