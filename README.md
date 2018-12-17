@@ -40,7 +40,7 @@ Brute force classifier for analyzing quality of main classifier
 
 19 - свадьб wedding визаж свадеб декор молодож невест беремен
 
-20 - -
+20 - special id for people with non-informative groups
 
 21 - наука science прогресс интеллект
 

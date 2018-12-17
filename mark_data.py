@@ -78,15 +78,20 @@ def mark_next_free_person():
             most_freq_word_id = key
 
     if max == 0:
-        print('Could not find anything, adding random present for user_id=' + str(current_user['id']))
+        print('Could not find anything, adding special present for user_id=' + str(current_user['id']))
+        assign_present(cursor, current_user['id'], 20)
+        add_prediction(cursor, current_user['id'], 20)
     else:
-        print('https://vk.com/id' + str(current_user['id']), key_words[most_freq_word_id])
+        # print('https://vk.com/id' + str(current_user['id']), key_words[most_freq_word_id])
         assign_present(cursor, current_user['id'], most_freq_word_id)
         add_prediction(cursor, current_user['id'], most_freq_word_id)
 
 
 # drop_presents(cursor)
-for i in range(0, 100):
+# 4154
+for i in range(0, 5000):
+    if i % 250 == 0:
+        print(str(i/50) + '%')
     mark_next_free_person()
 
 

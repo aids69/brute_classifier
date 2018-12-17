@@ -30,6 +30,7 @@ def create_and_save_models():
     """Iterates through cluster field and creates kmeans clusters, then saves them to files"""
     for i, cluster_field in enumerate(cluster_fields):
         current_file_name = cluster_field + '.pkl'
+        vec_file_name = cluster_field + '_vec.pkl'
         data = get_records_by_field(cursor, cluster_field)
         ids, words = map(list, zip(*data))
 
@@ -41,6 +42,7 @@ def create_and_save_models():
         model = KMeans(n_clusters=true_k, init='k-means++', max_iter=100, n_init=1)
         model.fit(X)
         save_model(model, current_file_name)
+        save_model(vectorizer, vec_file_name)
 
 
 def _create_key_words_for_cluster(model, terms, clusters_amount):
@@ -59,24 +61,27 @@ def load_and_use_models():
     """Loads already saved models, marks data and saves marks and clusters to db"""
     for i, cluster_field in enumerate(cluster_fields):
         current_model = load_model(cluster_field + '.pkl')
+        current_vectorizer = load_model(cluster_field + '_vec.pkl')
+
         data = get_records_by_field(cursor, cluster_field)
         ids, words = map(list, zip(*data))
         clusters_amount = current_model.get_params()['n_clusters']
 
-        vectorizer = TfidfVectorizer()
         flattened = [' '.join(sublist) for sublist in words]
-        X = vectorizer.fit_transform(flattened)
+        X = current_vectorizer.transform(flattened)
 
         predicts = current_model.predict(X)
         # save predictions to db
         for i in range(len(ids)):
             add_cluster(cursor, cluster_field, predicts[i], ids[i])
         # save cluster info to db
-        key_words = _create_key_words_for_cluster(current_model, vectorizer.get_feature_names(), clusters_amount)
+        key_words = _create_key_words_for_cluster(current_model,
+                                                  current_vectorizer.get_feature_names(),
+                                                  clusters_amount)
         create_cluster_info(cursor, cluster_field, key_words)
 
 
-create_and_save_models()
+load_and_use_models()
 
 db.commit()
 db.close()

@@ -1,4 +1,5 @@
 import re
+import numpy as np
 
 pattern = re.compile('([^\s\w]|_)+')
 
@@ -83,7 +84,8 @@ def add_prediction(crs, id, present_id):
     """Adds brute prediction"""
     crs.execute('INSERT OR IGNORE INTO classes(person_id, brute) VALUES(' +
                 str(id) + ', ' + str(present_id) + ')')
-    # crs.execute('UPDATE classes SET brute = ' + str(present_id) + ' WHERE person_id = ' + str(id))
+    if crs.rowcount == 0:
+        crs.execute('UPDATE classes SET brute = ' + str(present_id) + ' WHERE person_id = ' + str(id))
 
 
 def get_records_by_field(crs, field_name):
@@ -99,11 +101,11 @@ def get_records_by_field(crs, field_name):
         all_users = users.fetchall()
         all_users = [x for x in all_users if x[1]]
         # slicing the list down to 5%
-        all_users = all_users[: int(len(all_users) * .05)]
+        all_users = all_users[:int(len(all_users) * .05)]
         print('total:', len(all_users))
 
         for idx, user in enumerate(all_users):
-            if idx % 5000 == 0:
+            if idx % 2500 == 0:
                 print(str(100*idx/len(all_users)) + '%')
             # getting only first 60 communities because my pc dies
             communities = user[1].split(',')[:60]
@@ -148,4 +150,26 @@ def create_cluster_info(crs, cluster_name, key_words_arr):
 
     crs.execute('INSERT OR IGNORE INTO clusters(name, amount_of_clusters, cluster_values) VALUES("' +
                 str(cluster_name) + '", ' + str(clusters_amount) + ', "' + res_str + '")')
+
+
+def get_data(crs):
+    """Gets X and y for our data, where X - clusters and y - brute"""
+    # TODO: instead of using hardcoded array of cluster_amounts should get it from db
+    classes = crs.execute('SELECT * FROM classes WHERE brute IS NOT NULL')
+    # all_users = users.fetchall()
+    # person_id, brute, cluster0, cluster1,...
+    cluster_fields = ['about', 'activities', 'books', 'communities',
+                      'games', 'interests', 'personal_inspired_by', 'movies',
+                      'music', 'status']
+    cluster_amounts = [7, 12, 6, 20, 3, 6, 6, 9, 7, 9]
+    res = np.array([])
+
+    for row in classes:
+        current_user = np.array(row[0])
+        for i, e in enumerate(current_user):
+            # if not available we mark it as a max+1 class
+            if np.isnan(e):
+                current_user[i] = cluster_amounts[i+2]
+        res.append(current_user)
+
 
