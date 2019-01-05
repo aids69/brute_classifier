@@ -4,7 +4,7 @@ import numpy as np
 pattern = re.compile('([^\s\w]|_)+')
 
 
-def _format_string(str):
+def format_string(str):
     """Removes special characters and numbers and returns list of words"""
     if isinstance(str, int):
         return str
@@ -14,7 +14,7 @@ def _format_string(str):
     return list(filter(None, new_str.split()))
 
 
-def _get_group_info(crs, id):
+def get_group_info(crs, id):
     """Gets group info by id, returns list of formatted words"""
     all_users = crs.execute('SELECT * FROM groups WHERE id=' + id)
     current_group = all_users.fetchone()
@@ -26,7 +26,7 @@ def _get_group_info(crs, id):
     indices = [2, 9, 10]
     for i in indices:
         if current_group[i]:
-            res += _format_string(current_group[i])
+            res += format_string(current_group[i])
 
     return res
 
@@ -67,7 +67,7 @@ def get_user(crs):
 
     for key, value in params.items():
         if current_user[key]:
-            fields[value] = _format_string(current_user[key])
+            fields[value] = format_string(current_user[key])
 
     return fields
 
@@ -90,107 +90,14 @@ def add_prediction(crs, id, present_id):
         crs.execute('UPDATE classes SET brute = ' + str(present_id) + ' WHERE person_id = ' + str(id))
 
 
-from sklearn.externals import joblib
-
-
-def save_model(model, file_name):
-    """Saves model to a specific file"""
-    joblib.dump(model, './models/' + file_name)
-
-
-def load_model(file_name):
-    """Loads model from a file it was saved to"""
-    model = joblib.load('./models/' + file_name)
-    return model
-
-
-def _get_all_info_by_field(crs, field_name):
-    users = crs.execute('SELECT id, ' + field_name + ' FROM users WHERE ' + field_name + ' IS NOT NULL')
-    all_users = users.fetchall()
-
-    for idx, user in enumerate(all_users):
-        all_users[idx] = tuple([user[0], _format_string(user[1])])
-
-    # filtering empty strings because they are not NULL
-    all_users = [x for x in all_users if x[1]]
-    return all_users
-
-
-def get_records_by_field(crs, field_name, clf=None, vec=None):
-    """Gets non-empty data by field from all users or by id"""
-    if field_name != 'communities':
-        return _get_all_info_by_field(crs, field_name)
-
-    # elif clf is None:
+def get_records_by_field(crs, field_name):
+    """Gets all records with non-empty field by field name"""
+    if field_name == 'communities':
+        all_users = crs.execute('SELECT id, communities FROM users WHERE communities <> "-"')
+        return all_users.fetchall()
     else:
-        users = crs.execute('SELECT id, communities FROM users WHERE communities <> "-"')
-        all_users = users.fetchall()
-        all_users = [x for x in all_users if x[1]]
-
-        for segment in np.arange(0.05, 1.05, 0.05):
-            # current_users_seg = all_users[int((segment - 0.05) * len(all_users)) : int(segment * len(all_users))]
-            current_users_seg = all_users[0:int(0.1 * len(all_users))]
-            print('total:', len(current_users_seg))
-            print(segment - 0.05, segment)
-            for idx, user in enumerate(current_users_seg):
-                if idx % 1000 == 0:
-                    print(str(100 * idx / len(current_users_seg)) + '%')
-                communities = user[1].split(',')[:25]
-                communities_info = [None] * len(communities)
-                for i, id in enumerate(communities):
-                    if id:
-                        communities_info[i] = _get_group_info(crs, id)
-                communities_info = [item for sublist in communities_info for item in sublist]
-                current_users_seg[idx] = tuple([user[0], communities_info])
-                # filtering empty strings because they are not NULL
-            # тут добавила строку
-            return [x for x in current_users_seg if x[1]]
-            ids, words = map(list, zip(*[x for x in current_users_seg if x[1]]))
-
-            flattened = [' '.join(sublist) for sublist in words]
-            vec = load_model('communities_vec.pkl')
-            clf = load_model('communities.pkl')
-            X = vec.transform(flattened)
-
-            predicts = clf.predict(X)
-            # save predictions to db
-            for i in range(len(ids)):
-                add_cluster(crs, 'communities', predicts[i], ids[i])
-            del ids, words, X, predicts, flattened, current_users_seg, vec, clf
-    # else:
-    #     users = crs.execute('SELECT id, communities FROM users WHERE communities <> "-"')
-    #     all_users = users.fetchall()
-    #     all_users = [x for x in all_users if x[1]]
-    #
-    #     save_model(clf, 'communities.pkl')
-    #     del clf
-    #
-    #     for segment in np.arange(0.05, 1.05, 0.05):
-    #         current_users_seg = all_users[int((segment - 0.05) * len(all_users)) : int(segment * len(all_users))]
-    #         print(segment - 0.05, segment)
-    #         print(int((segment - 0.05) * len(all_users)), int(segment * len(all_users)))
-    #         print('total:', len(current_users_seg))
-    #         for idx, user in enumerate(current_users_seg):
-    #             if idx % 1000 == 0:
-    #                 print(str(100 * idx / len(current_users_seg)) + '%')
-    #             communities = user[1].split(',')[:25]
-    #             communities_info = [None] * len(communities)
-    #             for i, id in enumerate(communities):
-    #                 if id:
-    #                     communities_info[i] = _get_group_info(crs, id)
-    #             communities_info = [item for sublist in communities_info for item in sublist]
-    #             current_users_seg[idx] = tuple([user[0], communities_info])
-    #         # filtering empty strings because they are not NULL
-    #         current_users_seg = [x for x in current_users_seg if x[1]]
-    #         ids, words = map(list, zip(*current_users_seg))
-    #         flattened = [' '.join(sublist) for sublist in words]
-    #
-    #         clf = load_model('communities.pkl')
-    #         clf = clf.partial_fit(vec.transform(flattened))
-    #         save_model(clf, 'communities.pkl')
-    #         if segment != 1:
-    #             del clf, flattened, words, ids, current_users_seg
-    #     return clf, vec
+        all_users = crs.execute('SELECT id, ' + field_name + ' FROM users WHERE ' + field_name + ' IS NOT NULL')
+        return all_users.fetchall()
 
 
 def get_field_by_id(crs, field_name, person_id):
@@ -201,7 +108,7 @@ def get_field_by_id(crs, field_name, person_id):
         if current_user[0] == None:
             return []
 
-        current_user = _format_string(current_user[0])
+        current_user = format_string(current_user[0])
     else:
         user = crs.execute('SELECT communities FROM users WHERE id = ' + person_id)
         current_user = user.fetchone()
@@ -209,7 +116,8 @@ def get_field_by_id(crs, field_name, person_id):
         communities = current_user[0].split(',')
         communities_info = [None] * len(communities)
         for i, id in enumerate(communities):
-            communities_info[i] = _get_group_info(crs, id)
+            communities_info[i] = get_group_info(crs, id)
+
         communities_info = [item for sublist in communities_info for item in sublist]
         current_user = communities_info
 
@@ -263,7 +171,7 @@ def get_data(crs, person_id=-1):
         current_user = np.array(current_user)
         for i, e in enumerate(current_user):
             # if not available we mark it as a max+1 class
-            if e == None:
+            if e is None:
                 current_user[i] = cluster_amounts[i-2]
         X.append(np.array(current_user[2:]))
         y_and_ids.append(np.array(current_user[:2]))
