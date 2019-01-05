@@ -55,14 +55,19 @@ def _process_data(data):
     return [x for x in data if x[1]]
 
 
-def _process_communities_data(data, segment):
+def _process_communities_data(data, segment, seg_start=-1):
     """Fetches data for each community and removes special characters from it"""
     all_users = [x for x in data if x[1]]
-    current_users_seg = all_users[int((segment - 0.05) * len(all_users)): int(segment * len(all_users))]
-    print('Current segment:', segment - 0.05, segment)
+
+    if seg_start == -1:
+        seg_start = segment - 0.05
+
+    current_users_seg = all_users[int(seg_start * len(all_users)):int(segment * len(all_users))]
+    print('Current segment:', seg_start, segment)
+    print('Total:', len(current_users_seg))
 
     for idx, user in enumerate(current_users_seg):
-        if idx % 1000 == 0:
+        if idx % 2500 == 0:
             print(str(100 * idx / len(current_users_seg)) + '%')
 
         communities = user[1].split(',')[:25]
@@ -70,8 +75,8 @@ def _process_communities_data(data, segment):
         for i, id in enumerate(communities):
             if id:
                 communities_info[i] = get_group_info(cursor, id)
-                communities_info = [item for sublist in communities_info for item in sublist]
-                current_users_seg[idx] = tuple([user[0], communities_info])
+        communities_info = [item for sublist in communities_info for item in sublist]
+        current_users_seg[idx] = tuple([user[0], communities_info])
 
     return current_users_seg
 
@@ -117,25 +122,25 @@ def create_and_save_models():
             _fit_and_save_models(data, cluster_amounts[i], current_file_name, vec_file_name)
         else:
             # Usual kmeans and tfidVectorizer
-            data = _process_communities_data(data, segment=0.1)
+            data = _process_communities_data(data, segment=0.1, seg_start=0)
             _fit_and_save_models(data, cluster_amounts[i], current_file_name, vec_file_name)
 
             # MiniBatch kmeans and hashing vectorizer
-            save_model(MiniBatchKMeans(n_clusters=cluster_amounts[i]), 'communities.pkl')
-            vec = HashingVectorizer()
-
-            for segment in np.arange(0.05, 1.05, 0.05):
-                current_seg = _process_communities_data(data, segment)
-                ids, words = map(list, zip(*current_seg))
-                flattened = [' '.join(sublist) for sublist in words]
-
-                clf = load_model('communities.pkl')
-                clf = clf.partial_fit(vec.transform(flattened))
-
-                save_model(clf, 'communities.pkl')
-                save_model(vec, 'communities_vec.pkl')
-
-                del clf, flattened, words, ids, current_seg
+            # save_model(MiniBatchKMeans(n_clusters=cluster_amounts[i]), 'communities.pkl')
+            # vec = HashingVectorizer()
+            #
+            # for segment in np.arange(0.05, 1.05, 0.05):
+            #     current_seg = _process_communities_data(data, segment)
+            #     ids, words = map(list, zip(*current_seg))
+            #     flattened = [' '.join(sublist) for sublist in words]
+            #
+            #     clf = load_model('communities.pkl')
+            #     clf = clf.partial_fit(vec.transform(flattened))
+            #
+            #     save_model(clf, 'communities.pkl')
+            #     save_model(vec, 'communities_vec.pkl')
+            #
+            #     del clf, flattened, words, ids, current_seg
 
 
 def apply_saved_models():
@@ -152,13 +157,15 @@ def apply_saved_models():
             _predict_and_save(data, cluster_field, current_model, current_vectorizer)
         else:
             for segment in np.arange(0.05, 1.05, 0.05):
-                data = _process_communities_data(data, segment)
-                _predict_and_save(data, cluster_field, current_model, current_vectorizer)
-                del data
+                current_seg = _process_communities_data(data, segment)
+                _predict_and_save(current_seg, cluster_field, current_model, current_vectorizer)
+                if segment == 0.1:
+                    return
+                del current_seg
 
 
-create_and_save_models()
-apply_saved_models()
+# create_and_save_models()
+# apply_saved_models()
 
 db.commit()
 db.close()

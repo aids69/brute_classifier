@@ -18,7 +18,7 @@ def get_group_info(crs, id):
     """Gets group info by id, returns list of formatted words"""
     all_users = crs.execute('SELECT * FROM groups WHERE id=' + id)
     current_group = all_users.fetchone()
-    if current_group == None:
+    if current_group is None:
         return ['']
 
     res = []
