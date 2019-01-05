@@ -18,6 +18,8 @@ def _get_group_info(crs, id):
     """Gets group info by id, returns list of formatted words"""
     all_users = crs.execute('SELECT * FROM groups WHERE id=' + id)
     current_group = all_users.fetchone()
+    if current_group == None:
+        return ['']
 
     res = []
     # 2 -> name, 9 -> description, 10 -> status
@@ -88,37 +90,130 @@ def add_prediction(crs, id, present_id):
         crs.execute('UPDATE classes SET brute = ' + str(present_id) + ' WHERE person_id = ' + str(id))
 
 
-def get_records_by_field(crs, field_name):
-    """Gets non-empty data by field from all users"""
-    if field_name != 'communities':
-        users = crs.execute('SELECT id, ' + field_name + ' FROM users WHERE ' + field_name + ' IS NOT NULL')
-        all_users = users.fetchall()
+from sklearn.externals import joblib
 
-        for idx, user in enumerate(all_users):
-            all_users[idx] = tuple([user[0], _format_string(user[1])])
-    else:
-        users = crs.execute('SELECT id, communities FROM users WHERE communities <> "-"')
-        all_users = users.fetchall()
-        all_users = [x for x in all_users if x[1]]
-        # slicing the list down to 5%
-        all_users = all_users[:int(len(all_users) * .05)]
-        print('total:', len(all_users))
 
-        for idx, user in enumerate(all_users):
-            if idx % 2500 == 0:
-                print(str(100*idx/len(all_users)) + '%')
-            # getting only first 60 communities because my pc dies
-            communities = user[1].split(',')[:60]
-            communities_info = [None] * len(communities)
-            for i, id in enumerate(communities):
-                if id:
-                    communities_info[i] = _get_group_info(crs, id)
-            communities_info = [item for sublist in communities_info for item in sublist]
-            all_users[idx] = tuple([user[0], communities_info])
+def save_model(model, file_name):
+    """Saves model to a specific file"""
+    joblib.dump(model, './models/' + file_name)
+
+
+def load_model(file_name):
+    """Loads model from a file it was saved to"""
+    model = joblib.load('./models/' + file_name)
+    return model
+
+
+def _get_all_info_by_field(crs, field_name):
+    users = crs.execute('SELECT id, ' + field_name + ' FROM users WHERE ' + field_name + ' IS NOT NULL')
+    all_users = users.fetchall()
+
+    for idx, user in enumerate(all_users):
+        all_users[idx] = tuple([user[0], _format_string(user[1])])
 
     # filtering empty strings because they are not NULL
     all_users = [x for x in all_users if x[1]]
     return all_users
+
+
+def get_records_by_field(crs, field_name, clf=None, vec=None):
+    """Gets non-empty data by field from all users or by id"""
+    if field_name != 'communities':
+        return _get_all_info_by_field(crs, field_name)
+
+    # elif clf is None:
+    else:
+        users = crs.execute('SELECT id, communities FROM users WHERE communities <> "-"')
+        all_users = users.fetchall()
+        all_users = [x for x in all_users if x[1]]
+
+        for segment in np.arange(0.05, 1.05, 0.05):
+            # current_users_seg = all_users[int((segment - 0.05) * len(all_users)) : int(segment * len(all_users))]
+            current_users_seg = all_users[0:int(0.1 * len(all_users))]
+            print('total:', len(current_users_seg))
+            print(segment - 0.05, segment)
+            for idx, user in enumerate(current_users_seg):
+                if idx % 1000 == 0:
+                    print(str(100 * idx / len(current_users_seg)) + '%')
+                communities = user[1].split(',')[:25]
+                communities_info = [None] * len(communities)
+                for i, id in enumerate(communities):
+                    if id:
+                        communities_info[i] = _get_group_info(crs, id)
+                communities_info = [item for sublist in communities_info for item in sublist]
+                current_users_seg[idx] = tuple([user[0], communities_info])
+                # filtering empty strings because they are not NULL
+            # тут добавила строку
+            return [x for x in current_users_seg if x[1]]
+            ids, words = map(list, zip(*[x for x in current_users_seg if x[1]]))
+
+            flattened = [' '.join(sublist) for sublist in words]
+            vec = load_model('communities_vec.pkl')
+            clf = load_model('communities.pkl')
+            X = vec.transform(flattened)
+
+            predicts = clf.predict(X)
+            # save predictions to db
+            for i in range(len(ids)):
+                add_cluster(crs, 'communities', predicts[i], ids[i])
+            del ids, words, X, predicts, flattened, current_users_seg, vec, clf
+    # else:
+    #     users = crs.execute('SELECT id, communities FROM users WHERE communities <> "-"')
+    #     all_users = users.fetchall()
+    #     all_users = [x for x in all_users if x[1]]
+    #
+    #     save_model(clf, 'communities.pkl')
+    #     del clf
+    #
+    #     for segment in np.arange(0.05, 1.05, 0.05):
+    #         current_users_seg = all_users[int((segment - 0.05) * len(all_users)) : int(segment * len(all_users))]
+    #         print(segment - 0.05, segment)
+    #         print(int((segment - 0.05) * len(all_users)), int(segment * len(all_users)))
+    #         print('total:', len(current_users_seg))
+    #         for idx, user in enumerate(current_users_seg):
+    #             if idx % 1000 == 0:
+    #                 print(str(100 * idx / len(current_users_seg)) + '%')
+    #             communities = user[1].split(',')[:25]
+    #             communities_info = [None] * len(communities)
+    #             for i, id in enumerate(communities):
+    #                 if id:
+    #                     communities_info[i] = _get_group_info(crs, id)
+    #             communities_info = [item for sublist in communities_info for item in sublist]
+    #             current_users_seg[idx] = tuple([user[0], communities_info])
+    #         # filtering empty strings because they are not NULL
+    #         current_users_seg = [x for x in current_users_seg if x[1]]
+    #         ids, words = map(list, zip(*current_users_seg))
+    #         flattened = [' '.join(sublist) for sublist in words]
+    #
+    #         clf = load_model('communities.pkl')
+    #         clf = clf.partial_fit(vec.transform(flattened))
+    #         save_model(clf, 'communities.pkl')
+    #         if segment != 1:
+    #             del clf, flattened, words, ids, current_users_seg
+    #     return clf, vec
+
+
+def get_field_by_id(crs, field_name, person_id):
+    """Returns data for specific field for a specific person"""
+    if field_name != 'communities':
+        user = crs.execute('SELECT ' + field_name + ' FROM users WHERE id = ' + person_id)
+        current_user = user.fetchone()
+        if current_user[0] == None:
+            return []
+
+        current_user = _format_string(current_user[0])
+    else:
+        user = crs.execute('SELECT communities FROM users WHERE id = ' + person_id)
+        current_user = user.fetchone()
+        # current_user = [x for x in current_user if x[1]]
+        communities = current_user[0].split(',')
+        communities_info = [None] * len(communities)
+        for i, id in enumerate(communities):
+            communities_info[i] = _get_group_info(crs, id)
+        communities_info = [item for sublist in communities_info for item in sublist]
+        current_user = communities_info
+
+    return current_user
 
 
 def _create_sql_values(ids, values):
@@ -131,12 +226,12 @@ def _create_sql_values(ids, values):
 def add_cluster(crs, cluster_name, value, id):
     """Adds predicted cluster to classes table for specific id"""
     cluster_name += '_cluster'
-    crs.execute('INSERT OR IGNORE INTO classes(person_id, ' + cluster_name
-                + ') VALUES ' + '(' + str(id) + ',' + str(value) + ')')
+    # crs.execute('INSERT OR IGNORE INTO classes(person_id, ' + cluster_name
+    #             + ') VALUES ' + '(' + str(id) + ',' + str(value) + ')')
     # if id's already in the table, we need to update
-    if crs.rowcount == 0:
-        crs.execute('UPDATE classes SET ' + cluster_name +
-                    ' = ' + str(value) + ' WHERE person_id = ' + str(id))
+    # if crs.rowcount == 0:
+    crs.execute('UPDATE classes SET ' + cluster_name +
+                ' = ' + str(value) + ' WHERE person_id = ' + str(id))
 
 
 def create_cluster_info(crs, cluster_name, key_words_arr):
@@ -152,24 +247,29 @@ def create_cluster_info(crs, cluster_name, key_words_arr):
                 str(cluster_name) + '", ' + str(clusters_amount) + ', "' + res_str + '")')
 
 
-def get_data(crs):
+def get_data(crs, person_id=-1):
     """Gets X and y for our data, where X - clusters and y - brute"""
     # TODO: instead of using hardcoded array of cluster_amounts should get it from db
-    classes = crs.execute('SELECT * FROM classes WHERE brute IS NOT NULL')
-    # all_users = users.fetchall()
-    # person_id, brute, cluster0, cluster1,...
-    cluster_fields = ['about', 'activities', 'books', 'communities',
-                      'games', 'interests', 'personal_inspired_by', 'movies',
-                      'music', 'status']
+    if person_id == -1:
+        classes = crs.execute('SELECT * FROM classes WHERE brute IS NOT NULL').fetchall()
+    else:
+        classes = crs.execute('SELECT * FROM classes WHERE person_id = ' + person_id).fetchall()
+    # person_id, brute, cluster0, cluster1,... => +2
     cluster_amounts = [7, 12, 6, 20, 3, 6, 6, 9, 7, 9]
-    res = np.array([])
+    X = []
+    y_and_ids = []
 
-    for row in classes:
-        current_user = np.array(row[0])
+    for current_user in classes:
+        current_user = np.array(current_user)
         for i, e in enumerate(current_user):
             # if not available we mark it as a max+1 class
-            if np.isnan(e):
-                current_user[i] = cluster_amounts[i+2]
-        res.append(current_user)
+            if e == None:
+                current_user[i] = cluster_amounts[i-2]
+        X.append(np.array(current_user[2:]))
+        y_and_ids.append(np.array(current_user[:2]))
+    return np.array(X), np.array(y_and_ids)
 
 
+def get_present_by_id(crs, present_id):
+    present = crs.execute('SELECT name FROM presents WHERE id = ' + present_id).fetchone()[0]
+    return present
