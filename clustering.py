@@ -101,36 +101,22 @@ def _fit_and_save_com_models(data, cluster_amount):
     # for group intervals used in mark_data.py
     points = [0, 1, 2, 5, 8, 26]
 
-    # creating vectorizer for all data
-    united_sub_arrays = [sum(sublist, []) for sublist in words]
-    flattened = [' '.join(sublist) for sublist in united_sub_arrays]
-    vectorizer = TfidfVectorizer(max_df=0.4, min_df=0.005)
-    # vectorizer.fit(flattened)
-    # save_model(vectorizer, 'communities_vec.pkl')
-    #
-    # del flattened, united_sub_arrays, vectorizer
-    #
-    # for i in range(len(points) - 1):
-    #     # slicing some range of communities
-    #     current_communities = [el[points[i]:points[i+1]] for el in words]
-    #     # creating a separate array for each user
-    #     united_sub_arrays = [sum(sublist, []) for sublist in current_communities]
-    #     flattened = [' '.join(sublist) for sublist in united_sub_arrays]
-    #
-    #     vectorizer = load_model('communities_vec.pkl')
-    #     X = vectorizer.transform(flattened)
-    #     del vectorizer
-    #
-    #     model = KMeans(n_clusters=cluster_amount, init='k-means++', max_iter=100, n_init=1)
-    #     model.fit(X)
-    #
-    #     save_model(model, 'communities_' + str(points[i]) + '-' + str(points[i + 1]) + '.pkl')
-    X = vectorizer.fit_transform(flattened)
-    save_model(vectorizer, 'communities_vec.pkl')
+    for i in range(len(points) - 1):
+        # slicing some range of communities
+        current_communities = [el[points[i]:points[i+1]] for el in words]
+        # creating a separate array for each user
+        united_sub_arrays = [sum(sublist, []) for sublist in current_communities]
+        flattened = [' '.join(sublist) for sublist in united_sub_arrays]
 
-    model = KMeans(n_clusters=cluster_amount, init='k-means++', max_iter=100, n_init=1)
-    model.fit(X)
-    save_model(model, 'communities.pkl')
+        vectorizer = TfidfVectorizer(max_df=0.2, min_df=0.00005)
+        X = vectorizer.fit_transform(flattened)
+        save_model(vectorizer, 'communities_' + str(points[i]) + '-' + str(points[i + 1]) + '_vec.pkl')
+        del vectorizer
+
+        model = KMeans(n_clusters=cluster_amount, init='k-means++', max_iter=100, n_init=1)
+        model.fit(X)
+        save_model(model, 'communities_' + str(points[i]) + '-' + str(points[i + 1]) + '.pkl')
+        del model
 
 
 def _predict_and_save(data, field, model, vectorizer):
@@ -159,10 +145,9 @@ def _predict_and_save_communities(data):
         united_sub_arrays = [sum(sublist, []) for sublist in current_communities]
         flattened = [' '.join(sublist) for sublist in united_sub_arrays]
 
-        vectorizer = load_model('communities_vec.pkl')
         X = vectorizer.transform(flattened)
-        # model = load_model('communities_' + str(points[i]) + '-' + str(points[i + 1]) + '.pkl')
-        model = load_model('communities.pkl')
+        model = load_model('communities_' + str(points[i]) + '-' + str(points[i + 1]) + '.pkl')
+        vectorizer = load_model('communities_' + str(points[i]) + '-' + str(points[i + 1]) + '_vec.pkl')
         predicts = model.predict(X)
 
         # save predictions to db
