@@ -24,9 +24,9 @@ def load_model(file_name):
 # cluster_fields = ['about', 'activities', 'books', 'communities',
 #                   'games', 'interests', 'personal_inspired_by', 'movies',
 #                   'music', 'status']
-# cluster_amounts = [7, 12, 6, 20, 3, 6, 6, 9, 7, 9]
+# cluster_amounts = [4, 5, 3, 35, 3, 5, 3, 2, 4, 5]
 cluster_fields = ['communities']
-cluster_amounts = [20]
+cluster_amounts = [35]
 # cluster_fields = ['about', 'activities', 'books',
 #                   'games', 'interests', 'personal_inspired_by', 'movies',
 #                   'music', 'status']
@@ -75,7 +75,6 @@ def _process_communities_data(data, segment, seg_start=-1):
         for i, id in enumerate(communities):
             if id:
                 communities_info[i] = get_group_info(cursor, id)
-        communities_info = [item for sublist in communities_info for item in sublist]
         current_users_seg[idx] = tuple([user[0], communities_info])
 
     return current_users_seg
@@ -85,7 +84,7 @@ def _fit_and_save_models(data, cluster_amount, file_name, vec_file_name):
     """Fits vectorizer and kmeans and saves them"""
     ids, words = map(list, zip(*data))
 
-    vectorizer = TfidfVectorizer(max_df=0.01, min_df=0.005)
+    vectorizer = TfidfVectorizer(max_df=0.1, min_df=0.0005)
     flattened = [' '.join(sublist) for sublist in words]
     X = vectorizer.fit_transform(flattened)
 
@@ -96,8 +95,46 @@ def _fit_and_save_models(data, cluster_amount, file_name, vec_file_name):
     save_model(vectorizer, vec_file_name)
 
 
+def _fit_and_save_com_models(data, cluster_amount):
+    """Fits communities vectorizers and models and saves them"""
+    ids, words = map(list, zip(*data))
+    # for group intervals used in mark_data.py
+    points = [0, 1, 2, 5, 8, 26]
+
+    # creating vectorizer for all data
+    united_sub_arrays = [sum(sublist, []) for sublist in words]
+    flattened = [' '.join(sublist) for sublist in united_sub_arrays]
+    vectorizer = TfidfVectorizer(max_df=0.4, min_df=0.005)
+    # vectorizer.fit(flattened)
+    # save_model(vectorizer, 'communities_vec.pkl')
+    #
+    # del flattened, united_sub_arrays, vectorizer
+    #
+    # for i in range(len(points) - 1):
+    #     # slicing some range of communities
+    #     current_communities = [el[points[i]:points[i+1]] for el in words]
+    #     # creating a separate array for each user
+    #     united_sub_arrays = [sum(sublist, []) for sublist in current_communities]
+    #     flattened = [' '.join(sublist) for sublist in united_sub_arrays]
+    #
+    #     vectorizer = load_model('communities_vec.pkl')
+    #     X = vectorizer.transform(flattened)
+    #     del vectorizer
+    #
+    #     model = KMeans(n_clusters=cluster_amount, init='k-means++', max_iter=100, n_init=1)
+    #     model.fit(X)
+    #
+    #     save_model(model, 'communities_' + str(points[i]) + '-' + str(points[i + 1]) + '.pkl')
+    X = vectorizer.fit_transform(flattened)
+    save_model(vectorizer, 'communities_vec.pkl')
+
+    model = KMeans(n_clusters=cluster_amount, init='k-means++', max_iter=100, n_init=1)
+    model.fit(X)
+    save_model(model, 'communities.pkl')
+
+
 def _predict_and_save(data, field, model, vectorizer):
-    """Flattens and vectorizes data, makes prediction and saves it"""
+    """Flattens and vectorizes data, makes predictions and saves them"""
     ids, words = map(list, zip(*data))
 
     flattened = [' '.join(sublist) for sublist in words]
@@ -107,6 +144,31 @@ def _predict_and_save(data, field, model, vectorizer):
     # save predictions to db
     for i in range(len(ids)):
         add_cluster(cursor, field, predicts[i], ids[i])
+
+
+def _predict_and_save_communities(data):
+    """Flattens and vectorizes data, makes prediction and saves it"""
+    ids, words = map(list, zip(*data))
+    # for group intervals used in mark_data.py
+    points = [0, 1, 2, 5, 8, 26]
+
+    for i in range(len(points) - 1):
+        # slicing some range of communities
+        current_communities = [el[points[i]:points[i + 1]] for el in words]
+        # creating a separate array for each user
+        united_sub_arrays = [sum(sublist, []) for sublist in current_communities]
+        flattened = [' '.join(sublist) for sublist in united_sub_arrays]
+
+        vectorizer = load_model('communities_vec.pkl')
+        X = vectorizer.transform(flattened)
+        # model = load_model('communities_' + str(points[i]) + '-' + str(points[i + 1]) + '.pkl')
+        model = load_model('communities.pkl')
+        predicts = model.predict(X)
+
+        # save predictions to db
+        field = 'communities_' + str(points[i+1]-1)
+        for i in range(len(ids)):
+            add_cluster(cursor, field, predicts[i], ids[i])
 
 
 def create_and_save_models():
@@ -123,7 +185,7 @@ def create_and_save_models():
         else:
             # Usual kmeans and tfidVectorizer
             data = _process_communities_data(data, segment=0.1, seg_start=0)
-            _fit_and_save_models(data, cluster_amounts[i], current_file_name, vec_file_name)
+            _fit_and_save_com_models(data, cluster_amounts[i])
 
             # MiniBatch kmeans and hashing vectorizer
             # save_model(MiniBatchKMeans(n_clusters=cluster_amounts[i]), 'communities.pkl')
@@ -147,25 +209,24 @@ def apply_saved_models():
     """Loads already saved models, marks data and saves marks and clusters to db"""
     for i, cluster_field in enumerate(cluster_fields):
         print(cluster_field)
-        current_model = load_model(cluster_field + '.pkl')
-        current_vectorizer = load_model(cluster_field + '_vec.pkl')
-
         data = get_records_by_field(cursor, cluster_field)
 
         if cluster_field != 'communities':
+            current_model = load_model(cluster_field + '.pkl')
+            current_vectorizer = load_model(cluster_field + '_vec.pkl')
+
             data = _process_data(data)
             _predict_and_save(data, cluster_field, current_model, current_vectorizer)
+
         else:
             for segment in np.arange(0.05, 1.05, 0.05):
                 current_seg = _process_communities_data(data, segment)
-                _predict_and_save(current_seg, cluster_field, current_model, current_vectorizer)
-                if segment == 0.1:
-                    return
+                _predict_and_save_communities(current_seg)
                 del current_seg
 
 
-# create_and_save_models()
-# apply_saved_models()
+create_and_save_models()
+apply_saved_models()
 
 db.commit()
 db.close()

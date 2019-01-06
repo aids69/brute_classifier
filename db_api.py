@@ -62,7 +62,7 @@ def get_user(crs):
     communities_info = []
     communities = current_user[18].split(',')
     for id in communities:
-        communities_info.append(_get_group_info(crs, id))
+        communities_info.append(get_group_info(crs, id))
     fields['communities'] = communities_info
 
     for key, value in params.items():
@@ -157,13 +157,12 @@ def create_cluster_info(crs, cluster_name, key_words_arr):
 
 def get_data(crs, person_id=-1):
     """Gets X and y for our data, where X - clusters and y - brute"""
-    # TODO: instead of using hardcoded array of cluster_amounts should get it from db
     if person_id == -1:
         classes = crs.execute('SELECT * FROM classes WHERE brute IS NOT NULL').fetchall()
     else:
         classes = crs.execute('SELECT * FROM classes WHERE person_id = ' + person_id).fetchall()
     # person_id, brute, cluster0, cluster1,... => +2
-    cluster_amounts = [7, 12, 6, 20, 3, 6, 6, 9, 7, 9]
+    cluster_amounts = [4, 5, 3, 35, 3, 5, 3, 2, 4, 5, 35, 35, 35, 35, 35]
     X = []
     y_and_ids = []
 

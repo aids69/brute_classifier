@@ -25,7 +25,6 @@ def count_word(user, words):
     if 'sex' in user.keys() and user['sex'] == 2 and 'мам' in words:
         return 0
 
-
     idx = 0
     for comm in user['communities']:
         if any([s for s in comm if any(xs in s for xs in words)]):
@@ -90,7 +89,7 @@ def mark_next_free_person():
 # drop_presents(cursor)
 for i in range(0, 5000):
     if i % 250 == 0:
-        print(str(100*i/5000) + '%')
+        print(str(100 * i / 5000) + '%')
     mark_next_free_person()
 
 
