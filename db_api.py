@@ -105,7 +105,7 @@ def get_field_by_id(crs, field_name, person_id):
     if field_name != 'communities':
         user = crs.execute('SELECT ' + field_name + ' FROM users WHERE id = ' + person_id)
         current_user = user.fetchone()
-        if current_user[0] == None:
+        if current_user[0] is None:
             return []
 
         current_user = format_string(current_user[0])
@@ -180,3 +180,14 @@ def get_data(crs, person_id=-1):
 def get_present_by_id(crs, present_id):
     present = crs.execute('SELECT name FROM presents WHERE id = ' + present_id).fetchone()[0]
     return present
+
+
+def save_community(crs, id, com_0, com_1, com_2, com_5, com_8):
+    """Saves formatted community to db"""
+    communities = '", "'.join([com_0, com_1, com_2, com_5, com_8])
+    crs.execute('INSERT OR IGNORE INTO formatted_communities(id, com_0, com_1, com_2, com_5, com_8) ' +
+                'VALUES(' + str(id) + ', "' + communities + '")')
+
+
+def get_communities_info(crs):
+    return crs.execute('SELECT * FROM formatted_communities').fetchall()

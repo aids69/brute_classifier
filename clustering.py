@@ -4,7 +4,8 @@ from sklearn.cluster import KMeans, MiniBatchKMeans
 from sklearn.feature_extraction.text import TfidfVectorizer, HashingVectorizer
 
 import sqlite3
-from db_api import get_records_by_field, add_cluster, create_cluster_info, format_string, get_group_info
+from db_api import get_records_by_field, add_cluster,\
+    format_string, get_group_info, save_community, get_communities_info
 
 db = sqlite3.connect('db/users.db')
 cursor = db.cursor()
@@ -97,19 +98,22 @@ def _fit_and_save_models(data, cluster_amount, file_name, vec_file_name):
 
 def _fit_and_save_com_models(data, cluster_amount):
     """Fits communities vectorizers and models and saves them"""
-    ids, words = map(list, zip(*data))
+    words = [el[1:] for el in data]
     # for group intervals used in mark_data.py
-    points = [0, 1, 2, 5, 8, 26]
+    # points = [0, 1, 2, 5, 8, 26]
+    points = [0, 1, 2, 5, 8]
 
     for i in range(len(points) - 1):
         # slicing some range of communities
-        current_communities = [el[points[i]:points[i+1]] for el in words]
+        current_communities = [el[i] for el in words]
         # creating a separate array for each user
-        united_sub_arrays = [sum(sublist, []) for sublist in current_communities]
-        flattened = [' '.join(sublist) for sublist in united_sub_arrays]
 
-        vectorizer = TfidfVectorizer(max_df=0.2, min_df=0.00005)
-        X = vectorizer.fit_transform(flattened)
+        # crashes because of too much data
+        if points[i + 1] != 26:
+            vectorizer = TfidfVectorizer(max_df=0.1, min_df=0.00005)
+        else:
+            vectorizer = TfidfVectorizer(max_df=0.1, min_df=0.000001)
+        X = vectorizer.fit_transform(current_communities)
         save_model(vectorizer, 'communities_' + str(points[i]) + '-' + str(points[i + 1]) + '_vec.pkl')
         del vectorizer
 
@@ -134,24 +138,25 @@ def _predict_and_save(data, field, model, vectorizer):
 
 def _predict_and_save_communities(data):
     """Flattens and vectorizes data, makes prediction and saves it"""
-    ids, words = map(list, zip(*data))
+    ids = [el[0] for el in data]
+    words = [el[1:] for el in data]
     # for group intervals used in mark_data.py
-    points = [0, 1, 2, 5, 8, 26]
+    # points = [0, 1, 2, 5, 8, 26]
+    points = [0, 1, 2, 5, 8]
 
     for i in range(len(points) - 1):
         # slicing some range of communities
-        current_communities = [el[points[i]:points[i + 1]] for el in words]
-        # creating a separate array for each user
-        united_sub_arrays = [sum(sublist, []) for sublist in current_communities]
-        flattened = [' '.join(sublist) for sublist in united_sub_arrays]
+        current_communities = [el[i] for el in words]
+        print(str(points[i]) + '-' + str(points[i + 1]))
 
-        X = vectorizer.transform(flattened)
         model = load_model('communities_' + str(points[i]) + '-' + str(points[i + 1]) + '.pkl')
         vectorizer = load_model('communities_' + str(points[i]) + '-' + str(points[i + 1]) + '_vec.pkl')
+
+        X = vectorizer.transform(current_communities)
         predicts = model.predict(X)
 
         # save predictions to db
-        field = 'communities_' + str(points[i+1]-1)
+        field = 'communities_' + str(points[i+1] - 1)
         for i in range(len(ids)):
             add_cluster(cursor, field, predicts[i], ids[i])
 
@@ -162,32 +167,14 @@ def create_and_save_models():
         print(cluster_field)
         current_file_name = cluster_field + '.pkl'
         vec_file_name = cluster_field + '_vec.pkl'
-        data = get_records_by_field(cursor, cluster_field)
 
         if cluster_field != 'communities':
+            data = get_records_by_field(cursor, cluster_field)
             data = _process_data(data)
             _fit_and_save_models(data, cluster_amounts[i], current_file_name, vec_file_name)
         else:
-            # Usual kmeans and tfidVectorizer
-            data = _process_communities_data(data, segment=0.1, seg_start=0)
-            _fit_and_save_com_models(data, cluster_amounts[i])
-
-            # MiniBatch kmeans and hashing vectorizer
-            # save_model(MiniBatchKMeans(n_clusters=cluster_amounts[i]), 'communities.pkl')
-            # vec = HashingVectorizer()
-            #
-            # for segment in np.arange(0.05, 1.05, 0.05):
-            #     current_seg = _process_communities_data(data, segment)
-            #     ids, words = map(list, zip(*current_seg))
-            #     flattened = [' '.join(sublist) for sublist in words]
-            #
-            #     clf = load_model('communities.pkl')
-            #     clf = clf.partial_fit(vec.transform(flattened))
-            #
-            #     save_model(clf, 'communities.pkl')
-            #     save_model(vec, 'communities_vec.pkl')
-            #
-            #     del clf, flattened, words, ids, current_seg
+            communities = get_communities_info(cursor)
+            _fit_and_save_com_models(communities, cluster_amounts[i])
 
 
 def apply_saved_models():
@@ -204,10 +191,30 @@ def apply_saved_models():
             _predict_and_save(data, cluster_field, current_model, current_vectorizer)
 
         else:
-            for segment in np.arange(0.05, 1.05, 0.05):
-                current_seg = _process_communities_data(data, segment)
-                _predict_and_save_communities(current_seg)
-                del current_seg
+            communities = get_communities_info(cursor)
+            _predict_and_save_communities(communities)
+
+
+def save_communities():
+    """Formats communities and saves them to separate table to save time"""
+    data = get_records_by_field(cursor, 'communities')
+
+    for segment in np.arange(0.05, 1.05, 0.05):
+        current_seg = _process_communities_data(data, segment)
+        ids, words = map(list, zip(*current_seg))
+        # for group intervals used in mark_data.py
+        points = [0, 1, 2, 5, 8, 26]
+
+        for idx, id in enumerate(ids):
+            current_community = []
+            for i in range(len(points) - 1):
+                # getting piece by id
+                current_community_piece = words[idx][points[i]:points[i + 1]]
+                flattened = [' '.join(sublist) for sublist in current_community_piece]
+                res_str = ' '.join(flattened)
+                # adding to communities array
+                current_community.append(res_str)
+            save_community(cursor, id, *current_community)
 
 
 create_and_save_models()
