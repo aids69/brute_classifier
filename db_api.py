@@ -45,12 +45,16 @@ def get_user(crs):
         Gets first user with groups and no present selected yet
         returns informative fields + id
     """
-    all_users = crs.execute('SELECT * FROM users')
+    all_users = crs.execute('SELECT * FROM users WHERE seen_by_brute IS NULL')
     current_user = all_users.fetchone()
+    seen_ids = [str(current_user[0])]
 
-    # looking for user without present and with groups
+    # looking for a user without present and with groups
     while current_user[117] or current_user[18] == '-' or len(current_user[18].split(',')) < 10:
         current_user = all_users.fetchone()
+        seen_ids.append(str(current_user[0]))
+
+    crs.execute('UPDATE users SET seen_by_brute = 1 WHERE id IN (' + ','.join(seen_ids) + ')')
 
     params = {
         4: 'about', 5: 'activities', 7: 'books',
@@ -60,7 +64,8 @@ def get_user(crs):
     fields = {'id': current_user[0]}
 
     communities_info = []
-    communities = current_user[18].split(',')
+    # getting only first 25 communities
+    communities = current_user[18].split(',')[:26]
     for id in communities:
         communities_info.append(get_group_info(crs, id))
     fields['communities'] = communities_info
@@ -162,7 +167,7 @@ def get_data(crs, person_id=-1):
     else:
         classes = crs.execute('SELECT * FROM classes WHERE person_id = ' + person_id).fetchall()
     # person_id, brute, cluster0, cluster1,... => +2
-    cluster_amounts = [4, 5, 3, 35, 3, 5, 3, 2, 4, 5, 35, 35, 35, 35, 35]
+    # cluster_amounts = [4, 5, 3, 40, 3, 5, 3, 2, 4, 5, 40, 40, 40, 40, 40]
     X = []
     y_and_ids = []
 
@@ -171,23 +176,48 @@ def get_data(crs, person_id=-1):
         for i, e in enumerate(current_user):
             # if not available we mark it as a max+1 class
             if e is None:
-                current_user[i] = cluster_amounts[i-2]
+                current_user[i] = None
         X.append(np.array(current_user[2:]))
         y_and_ids.append(np.array(current_user[:2]))
     return np.array(X), np.array(y_and_ids)
 
 
 def get_present_by_id(crs, present_id):
-    present = crs.execute('SELECT name FROM presents WHERE id = ' + present_id).fetchone()[0]
-    return present
+    return crs.execute('SELECT name FROM presents WHERE id = ' + present_id).fetchone()[0]
 
 
-def save_community(crs, id, com_0, com_1, com_2, com_5, com_8):
+def save_community(crs, id, communities):
     """Saves formatted community to db"""
-    communities = '", "'.join([com_0, com_1, com_2, com_5, com_8])
-    crs.execute('INSERT OR IGNORE INTO formatted_communities(id, com_0, com_1, com_2, com_5, com_8) ' +
+    communities = '", "'.join(communities)
+    field_names = ', '.join(['com_' + str(i) for i in range(26)])
+    crs.execute('INSERT OR IGNORE INTO formatted_communities(id, ' + field_names + ') ' +
                 'VALUES(' + str(id) + ', "' + communities + '")')
 
 
-def get_communities_info(crs):
-    return crs.execute('SELECT * FROM formatted_communities').fetchall()
+def get_communities_info(crs, field):
+    return crs.execute('SELECT ' + field + ' FROM formatted_communities').fetchall()
+
+
+def get_user_by_id(crs, id):
+    all_users = crs.execute('SELECT * FROM users WHERE id = ' + str(id))
+    current_user = all_users.fetchone()
+
+    params = {
+        4: 'about', 5: 'activities', 7: 'books',
+        30: 'games', 37: 'interests', 48: 'movies', 49: 'music',
+        60: 'inspired_by', 65: 'quotes', 85: 'sex', 88: 'status'
+    }
+    fields = {'id': current_user[0]}
+
+    communities_info = []
+    # getting only first 25 communities
+    communities = current_user[18].split(',')[:26]
+    for id in communities:
+        communities_info.append(' '.join(get_group_info(crs, id)))
+    fields['communities'] = communities_info
+
+    for key, value in params.items():
+        if current_user[key]:
+            fields[value] = format_string(current_user[key])
+
+    return fields

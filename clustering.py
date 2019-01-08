@@ -27,7 +27,7 @@ def load_model(file_name):
 #                   'music', 'status']
 # cluster_amounts = [4, 5, 3, 35, 3, 5, 3, 2, 4, 5]
 cluster_fields = ['communities']
-cluster_amounts = [35]
+cluster_amounts = [60]
 # cluster_fields = ['about', 'activities', 'books',
 #                   'games', 'interests', 'personal_inspired_by', 'movies',
 #                   'music', 'status']
@@ -96,31 +96,29 @@ def _fit_and_save_models(data, cluster_amount, file_name, vec_file_name):
     save_model(vectorizer, vec_file_name)
 
 
-def _fit_and_save_com_models(data, cluster_amount):
+def _fit_and_save_com_models(cluster_amount):
     """Fits communities vectorizers and models and saves them"""
-    words = [el[1:] for el in data]
     # for group intervals used in mark_data.py
-    # points = [0, 1, 2, 5, 8, 26]
-    points = [0, 1, 2, 5, 8]
+    points = range(26)
 
-    for i in range(len(points) - 1):
+    for point in points:
         # slicing some range of communities
-        current_communities = [el[i] for el in words]
-        # creating a separate array for each user
+        current_communities = [el[0] for el in get_communities_info(cursor, 'com_' + str(point))]
+        print(point)
 
-        # crashes because of too much data
-        if points[i + 1] != 26:
-            vectorizer = TfidfVectorizer(max_df=0.1, min_df=0.00005)
-        else:
-            vectorizer = TfidfVectorizer(max_df=0.1, min_df=0.000001)
+        vectorizer = TfidfVectorizer(max_df=0.1, min_df=0.000001)
         X = vectorizer.fit_transform(current_communities)
-        save_model(vectorizer, 'communities_' + str(points[i]) + '-' + str(points[i + 1]) + '_vec.pkl')
+        del current_communities
+
+        save_model(vectorizer, 'communities_' + str(point) + '_vec.pkl')
         del vectorizer
+        print('Created vectorizer')
 
         model = KMeans(n_clusters=cluster_amount, init='k-means++', max_iter=100, n_init=1)
         model.fit(X)
-        save_model(model, 'communities_' + str(points[i]) + '-' + str(points[i + 1]) + '.pkl')
-        del model
+        save_model(model, 'communities_' + str(point) + '.pkl')
+        print('Created kmeans')
+        del model, X
 
 
 def _predict_and_save(data, field, model, vectorizer):
@@ -136,27 +134,26 @@ def _predict_and_save(data, field, model, vectorizer):
         add_cluster(cursor, field, predicts[i], ids[i])
 
 
-def _predict_and_save_communities(data):
+def _predict_and_save_communities():
     """Flattens and vectorizes data, makes prediction and saves it"""
-    ids = [el[0] for el in data]
-    words = [el[1:] for el in data]
+    ids = [el[0] for el in get_communities_info(cursor, 'id')]
     # for group intervals used in mark_data.py
-    # points = [0, 1, 2, 5, 8, 26]
-    points = [0, 1, 2, 5, 8]
+    points = range(26)
 
-    for i in range(len(points) - 1):
+    for point in points:
         # slicing some range of communities
-        current_communities = [el[i] for el in words]
-        print(str(points[i]) + '-' + str(points[i + 1]))
+        current_communities = [el[0] for el in get_communities_info(cursor, 'com_' + str(point))]
+        print(point)
 
-        model = load_model('communities_' + str(points[i]) + '-' + str(points[i + 1]) + '.pkl')
-        vectorizer = load_model('communities_' + str(points[i]) + '-' + str(points[i + 1]) + '_vec.pkl')
+        model = load_model('communities_' + str(point) + '.pkl')
+        vectorizer = load_model('communities_' + str(point) + '_vec.pkl')
 
         X = vectorizer.transform(current_communities)
         predicts = model.predict(X)
+        print('Applied models, saving to db')
 
         # save predictions to db
-        field = 'communities_' + str(points[i+1] - 1)
+        field = 'communities_' + str(point)
         for i in range(len(ids)):
             add_cluster(cursor, field, predicts[i], ids[i])
 
@@ -173,8 +170,7 @@ def create_and_save_models():
             data = _process_data(data)
             _fit_and_save_models(data, cluster_amounts[i], current_file_name, vec_file_name)
         else:
-            communities = get_communities_info(cursor)
-            _fit_and_save_com_models(communities, cluster_amounts[i])
+            _fit_and_save_com_models(cluster_amounts[i])
 
 
 def apply_saved_models():
@@ -191,8 +187,7 @@ def apply_saved_models():
             _predict_and_save(data, cluster_field, current_model, current_vectorizer)
 
         else:
-            communities = get_communities_info(cursor)
-            _predict_and_save_communities(communities)
+            _predict_and_save_communities()
 
 
 def save_communities():
@@ -203,22 +198,24 @@ def save_communities():
         current_seg = _process_communities_data(data, segment)
         ids, words = map(list, zip(*current_seg))
         # for group intervals used in mark_data.py
-        points = [0, 1, 2, 5, 8, 26]
+        points = range(26)
 
         for idx, id in enumerate(ids):
-            current_community = []
-            for i in range(len(points) - 1):
-                # getting piece by id
-                current_community_piece = words[idx][points[i]:points[i + 1]]
-                flattened = [' '.join(sublist) for sublist in current_community_piece]
-                res_str = ' '.join(flattened)
+            current_community = [''] * 26
+            for point in points:
+                # if there's not enough communities
+                if point >= len(words[idx]):
+                    break
+                flattened = ' '.join(words[idx][point])
                 # adding to communities array
-                current_community.append(res_str)
-            save_community(cursor, id, *current_community)
+                current_community[point] = flattened
+            save_community(cursor, id, current_community)
 
 
+# save_communities()
 create_and_save_models()
-apply_saved_models()
+# apply_saved_models()
+
 
 db.commit()
 db.close()
