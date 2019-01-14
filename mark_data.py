@@ -87,9 +87,9 @@ def mark_next_free_person():
 
 
 # drop_presents(cursor)
-for i in range(0, 1000):
+for i in range(0, 2000):
     if i % 100 == 0:
-        print(str(i) + ' - ' + str(100 * i / 1000) + '%')
+        print(str(i) + ' - ' + str(100 * i / 2000) + '%')
     mark_next_free_person()
 
 

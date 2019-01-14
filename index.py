@@ -5,43 +5,62 @@ from clustering import load_model, _create_key_words_for_cluster
 
 import sqlite3
 from db_api import get_field_by_id, add_cluster, create_cluster_info, get_data, get_present_by_id, get_user_by_id
+from word2vec_clf import find_most_similar_class
 
 db = sqlite3.connect('db/users.db')
 cursor = db.cursor()
 
+allowed_fields = ['about', 'activities', 'books', 'communities',
+                  'games', 'interests', 'inspired_by', 'movies',
+                  'music', 'status']
+
 
 def create_cluster_vec(id):
-    cluster_fields = ['about', 'activities', 'books', 'communities',
-                      'games', 'interests', 'personal_inspired_by', 'movies',
-                      'music', 'status']
-    for i, cluster_field in enumerate(cluster_fields):
-        current_model = load_model(cluster_field + '.pkl')
-        current_vectorizer = load_model(cluster_field + '_vec.pkl')
+    data = get_user_by_id(cursor, id)
+    keys = [key for key in data.keys() if key in allowed_fields]
 
-        data = get_field_by_id(cursor, cluster_field, id)
-        words = data
+    for key in keys:
+        if key == 'inspired_by':
+            field_name = 'personal_inspired_by'
+        else:
+            field_name = key
 
-        # flattened = [' '.join(sublist) for sublist in words]
-        X = current_vectorizer.transform(words)
-        predicts = current_model.predict(X).tolist()
-        prediction = max(set(predicts), key=predicts.count)
-        # TODO: do something for empty field
-        # save predictions to db
-        add_cluster(cursor, cluster_field, prediction, id)
+        current_model = load_model(field_name + '.pkl')
+        current_vectorizer = load_model(field_name + '_vec.pkl')
 
+        if key != 'communities':
+            X = current_vectorizer.transform([' '.join(data[key])])
+            predicts = current_model.predict(X).tolist()
+            prediction = predicts[0]
+            print(prediction)
+            # save predictions to db
+            # add_cluster(cursor, key, prediction, id)
+        else:
+            for idx, com in enumerate(data['communities']):
+                print(idx, com)
+                X = current_vectorizer.transform([' '.join(com)])
+                predicts = current_model.predict(X).tolist()
+                prediction = predicts[0]
+                print(prediction)
+                # save predictions to db
+                # add_cluster(cursor, 'com_' + str(idx), prediction, id)
+
+
+def get_word2vec_class(id):
+    dict = get_user_by_id(cursor, id)
+    united_values = [' '.join(dict[key]) for key in dict.keys() if key in allowed_fields]
+    flattened = [sublist for sublist in united_values]
+    res_str = ' '.join(flattened)
+
+    key, value, words = find_most_similar_class(res_str)
+    print(key, value, words)
+    return key
 
 id = sys.argv[1]
 call('node addPersonById.js ' + str(id), cwd='/home/ftlka/Documents/diploma/fetcher', shell=True)
 print('predicting...')
-dict = get_user_by_id(cursor, id)
-united_values = [' '.join(dict[key]) for key in dict.keys() if key != 'sex' and key != 'id']
-flattened = [sublist for sublist in united_values]
-res_str = ' '.join(flattened)
 
-from word2vec_clf import find_most_similar_class
-key, value, words = find_most_similar_class(res_str)
-print(key, value, words)
-# create_cluster_vec(id)
+create_cluster_vec(id)
 
 # we need only X for now
 # X, y_and_id = get_data(cursor, id)
