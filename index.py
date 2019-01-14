@@ -16,6 +16,7 @@ allowed_fields = ['about', 'activities', 'books', 'communities',
 
 
 def create_cluster_vec(id):
+    # TODO: fill missing values with what I'll get in simple imputer statistics_
     data = get_user_by_id(cursor, id)
     keys = [key for key in data.keys() if key in allowed_fields]
 
@@ -58,6 +59,9 @@ def get_word2vec_class(id):
 
 id = sys.argv[1]
 call('node addPersonById.js ' + str(id), cwd='/home/ftlka/Documents/diploma/fetcher', shell=True)
+
+# for cases when screen_name is passed
+id = int(open('current_id.txt', 'r').read())
 print('predicting...')
 
 create_cluster_vec(id)
