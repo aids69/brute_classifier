@@ -1,11 +1,12 @@
 import numpy as np
 from sklearn.externals import joblib
-from sklearn.cluster import KMeans, MiniBatchKMeans
-from sklearn.feature_extraction.text import TfidfVectorizer, HashingVectorizer
+from sklearn.cluster import KMeans
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 import sqlite3
 from db_api import get_records_by_field, add_cluster,\
-    format_string, get_group_info, save_community, get_communities_info
+    format_string, get_group_info, save_community, get_communities_info,\
+    get_all_communities_info, get_first_communities_info
 
 db = sqlite3.connect('db/users.db')
 cursor = db.cursor()
@@ -27,7 +28,7 @@ def load_model(file_name):
 #                   'music', 'status']
 # cluster_amounts = [4, 5, 3, 35, 3, 5, 3, 2, 4, 5]
 cluster_fields = ['communities']
-cluster_amounts = [60]
+cluster_amounts = [40]
 # cluster_fields = ['about', 'activities', 'books',
 #                   'games', 'interests', 'personal_inspired_by', 'movies',
 #                   'music', 'status']
@@ -71,7 +72,7 @@ def _process_communities_data(data, segment, seg_start=-1):
         if idx % 2500 == 0:
             print(str(100 * idx / len(current_users_seg)) + '%')
 
-        communities = user[1].split(',')[:25]
+        communities = user[1].split(',')[:26]
         communities_info = [None] * len(communities)
         for i, id in enumerate(communities):
             if id:
@@ -89,7 +90,7 @@ def _fit_and_save_models(data, cluster_amount, file_name, vec_file_name):
     flattened = [' '.join(sublist) for sublist in words]
     X = vectorizer.fit_transform(flattened)
 
-    model = KMeans(n_clusters=cluster_amount, init='k-means++', max_iter=100, n_init=1)
+    model = KMeans(n_clusters=cluster_amount)
     model.fit(X)
 
     save_model(model, file_name)
@@ -98,27 +99,33 @@ def _fit_and_save_models(data, cluster_amount, file_name, vec_file_name):
 
 def _fit_and_save_com_models(cluster_amount):
     """Fits communities vectorizers and models and saves them"""
-    # for group intervals used in mark_data.py
-    points = range(26)
+    all_info = get_all_communities_info(cursor)[:300000]
+    print('got data')
+    all_info = list(set([' '.join(el[1:]).strip() for el in all_info]))
+    print('Data is ready')
+    print(len(all_info))
+    vectorizer = TfidfVectorizer(max_df=0.35, min_df=0.025)
+    vectorizer.fit(all_info)
+    print('Data is fit')
+    save_model(vectorizer, 'communities_vec.pkl')
+    del all_info, vectorizer
+    print('Vectorizer is saved')
+    # return
 
-    for point in points:
-        # slicing some range of communities
-        current_communities = [el[0] for el in get_communities_info(cursor, 'com_' + str(point))]
-        print(point)
+    current_communities = [el for el in get_first_communities_info(cursor)]
+    flat_list = [item for sublist in current_communities for item in sublist if item]
+    print(len(flat_list))
 
-        vectorizer = TfidfVectorizer(max_df=0.1, min_df=0.000001)
-        X = vectorizer.fit_transform(current_communities)
-        del current_communities
+    vectorizer = load_model('communities_vec.pkl')
+    X = vectorizer.transform(flat_list)
+    del current_communities, flat_list, vectorizer
 
-        save_model(vectorizer, 'communities_' + str(point) + '_vec.pkl')
-        del vectorizer
-        print('Created vectorizer')
+    print('Created vectorizer')
 
-        model = KMeans(n_clusters=cluster_amount, init='k-means++', max_iter=100, n_init=1)
-        model.fit(X)
-        save_model(model, 'communities_' + str(point) + '.pkl')
-        print('Created kmeans')
-        del model, X
+    model = KMeans(n_clusters=cluster_amount, verbose=True, init='random')
+    model.fit(X)
+    save_model(model, 'communities.pkl')
+    print('Created kmeans')
 
 
 def _predict_and_save(data, field, model, vectorizer):
@@ -145,8 +152,8 @@ def _predict_and_save_communities():
         current_communities = [el[0] for el in get_communities_info(cursor, 'com_' + str(point))]
         print(point)
 
-        model = load_model('communities_' + str(point) + '.pkl')
-        vectorizer = load_model('communities_' + str(point) + '_vec.pkl')
+        model = load_model('communities.pkl')
+        vectorizer = load_model('communities_vec.pkl')
 
         X = vectorizer.transform(current_communities)
         predicts = model.predict(X)
@@ -213,7 +220,7 @@ def save_communities():
 
 
 # save_communities()
-create_and_save_models()
+# create_and_save_models()
 # apply_saved_models()
 
 

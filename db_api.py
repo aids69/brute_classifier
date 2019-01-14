@@ -10,7 +10,7 @@ def format_string(str):
         return str
 
     new_str = ' '.join(str.split('\\n'))
-    new_str = re.sub(r'\d+', '', pattern.sub('', new_str.lower()))
+    new_str = re.sub(r'\d+', '', pattern.sub(' ', new_str.lower()))
     return list(filter(None, new_str.split()))
 
 
@@ -167,14 +167,12 @@ def get_data(crs, person_id=-1):
     else:
         classes = crs.execute('SELECT * FROM classes WHERE person_id = ' + person_id).fetchall()
     # person_id, brute, cluster0, cluster1,... => +2
-    # cluster_amounts = [4, 5, 3, 40, 3, 5, 3, 2, 4, 5, 40, 40, 40, 40, 40]
     X = []
     y_and_ids = []
 
     for current_user in classes:
         current_user = np.array(current_user)
         for i, e in enumerate(current_user):
-            # if not available we mark it as a max+1 class
             if e is None:
                 current_user[i] = None
         X.append(np.array(current_user[2:]))
@@ -194,8 +192,21 @@ def save_community(crs, id, communities):
                 'VALUES(' + str(id) + ', "' + communities + '")')
 
 
+def update_community(crs, id, field, value):
+    if value:
+        crs.execute('UPDATE formatted_communities SET ' + field + ' = "' + value + '" WHERE id = ' + str(id))
+
+
 def get_communities_info(crs, field):
     return crs.execute('SELECT ' + field + ' FROM formatted_communities').fetchall()
+
+
+def get_first_communities_info(crs):
+    return crs.execute('SELECT com_0, com_1, com_2, com_3, com_4, com_5, com_6 FROM formatted_communities').fetchall()
+
+
+def get_all_communities_info(crs):
+    return crs.execute('SELECT * FROM formatted_communities').fetchall()
 
 
 def get_user_by_id(crs, id):

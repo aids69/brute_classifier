@@ -85,7 +85,6 @@ def ada_boost(X_train, X_test, y_train, y_test):
     # ada_boost_clf.fit(X, y)
     # save_model(ada_boost_clf, 'boost.pkl')
 
-# TODO: BACKUP!!!!!!
 
 X_train, X_test, y_train, y_test, X, y, ids_test = prepare_data()
 naive_bayes(X_train, X_test, y_train, y_test)
