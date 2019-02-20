@@ -16,11 +16,8 @@ import sqlite3
 from db_api import get_data
 from clustering import save_model
 
-db = sqlite3.connect('db/users.db')
-cursor = db.cursor()
 
-
-def prepare_data(test_size=0.3):
+def prepare_data(cursor, test_size=0.3):
     """Returns X_train, X_test, y_train, y_test ready for classification"""
     X, y_and_ids = get_data(cursor)
 
@@ -90,21 +87,15 @@ def ada_boost(X_train, X_test, y_train, y_test):
     save_model(ada_boost_clf, 'ada.pkl')
 
 
-# X_train, X_test, y_train, y_test, X, y, ids_test = prepare_data()
-# naive_bayes(X_train, X_test, y_train, y_test)
-# mult_bayes(X_train, X_test, y_train, y_test)
-# rand_forest(X_train, X_test, y_train, y_test, ids_test)
-# grad_boost(X_train, X_test, y_train, y_test)
-# ada_boost(X_train, X_test, y_train, y_test)
-from mark_data import mark_next_free_person
+if __name__ == '__main__':
+    db = sqlite3.connect('db/users.db')
+    cursor = db.cursor()
+    X_train, X_test, y_train, y_test, X, y, ids_test = prepare_data(cursor)
+    naive_bayes(X_train, X_test, y_train, y_test)
+    mult_bayes(X_train, X_test, y_train, y_test)
+    rand_forest(X_train, X_test, y_train, y_test, ids_test)
+    grad_boost(X_train, X_test, y_train, y_test)
+    ada_boost(X_train, X_test, y_train, y_test)
 
-users = cursor.execute('SELECT * FROM classes WHERE seen_by_brute IS NOT NULL').fetchall()
-ids = [user[0] for user in users]
-brute_results = [None] * len(users)
-w2v_results = [None] * len(users)
-
-for i, id in enumerate(ids):
-    brute_results[i] = mark_next_free_person()
-
-# db.commit()
-# db.close()
+    db.commit()
+    db.close()

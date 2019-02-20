@@ -6,11 +6,7 @@ from sklearn.decomposition import TruncatedSVD
 
 import sqlite3
 from db_api import get_records_by_field, add_cluster,\
-    format_string, get_group_info, save_community, get_communities_info,\
-    get_all_communities_info, get_first_communities_info
-
-db = sqlite3.connect('db/users.db')
-cursor = db.cursor()
+    format_string, get_group_info, save_community, get_communities_info
 
 
 def save_model(model, file_name):
@@ -34,8 +30,6 @@ cluster_amounts = [40]
 #                   'games', 'interests', 'personal_inspired_by', 'movies',
 #                   'music', 'status']
 # cluster_amounts = [7, 12, 6, 3, 6, 6, 9, 7, 9]
-# cluster_fields = ['about']
-# cluster_amounts = [3]
 
 
 def _create_key_words_for_cluster(model, terms, clusters_amount):
@@ -58,7 +52,7 @@ def _process_data(data):
     return [x for x in data if x[1]]
 
 
-def _process_communities_data(data, segment, seg_start=-1):
+def _process_communities_data(data, segment, cursor, seg_start=-1):
     """Fetches data for each community and removes special characters from it"""
     all_users = [x for x in data if x[1]]
 
@@ -98,7 +92,7 @@ def _fit_and_save_models(data, cluster_amount, file_name, vec_file_name):
     save_model(vectorizer, vec_file_name)
 
 
-def _fit_and_save_com_models(cluster_amount):
+def _fit_and_save_com_models(cluster_amount, cursor):
     """Fits communities vectorizers and models and saves them"""
     # all_info = get_all_communities_info(cursor)[:250000]
     # print('got data')
@@ -144,7 +138,7 @@ def _fit_and_save_com_models(cluster_amount):
     print('Created kmeans')
 
 
-def _predict_and_save(data, field, model, vectorizer):
+def _predict_and_save(data, field, model, vectorizer, cursor):
     """Flattens and vectorizes data, makes predictions and saves them"""
     ids, words = map(list, zip(*data))
 
@@ -157,7 +151,7 @@ def _predict_and_save(data, field, model, vectorizer):
         add_cluster(cursor, field, predicts[i], ids[i])
 
 
-def _predict_and_save_communities():
+def _predict_and_save_communities(cursor):
     """Flattens and vectorizes data, makes prediction and saves it"""
     ids = [el[0] for el in get_communities_info(cursor, 'id')]
     # for group intervals used in mark_data.py
@@ -181,7 +175,7 @@ def _predict_and_save_communities():
             add_cluster(cursor, field, predicts[i], ids[i])
 
 
-def create_and_save_models():
+def create_and_save_models(cursor):
     """Iterates through cluster field and creates kmeans clusters, then saves them to files"""
     for i, cluster_field in enumerate(cluster_fields):
         print(cluster_field)
@@ -193,10 +187,10 @@ def create_and_save_models():
             data = _process_data(data)
             _fit_and_save_models(data, cluster_amounts[i], current_file_name, vec_file_name)
         else:
-            _fit_and_save_com_models(cluster_amounts[i])
+            _fit_and_save_com_models(cluster_amounts[i], cursor)
 
 
-def apply_saved_models():
+def apply_saved_models(cursor):
     """Loads already saved models, marks data and saves marks and clusters to db"""
     for i, cluster_field in enumerate(cluster_fields):
         print(cluster_field)
@@ -207,18 +201,18 @@ def apply_saved_models():
             current_vectorizer = load_model(cluster_field + '_vec.pkl')
 
             data = _process_data(data)
-            _predict_and_save(data, cluster_field, current_model, current_vectorizer)
+            _predict_and_save(data, cluster_field, current_model, current_vectorizer, cursor)
 
         else:
-            _predict_and_save_communities()
+            _predict_and_save_communities(cursor)
 
 
-def save_communities():
+def save_communities(cursor):
     """Formats communities and saves them to separate table to save time"""
     data = get_records_by_field(cursor, 'communities')
 
     for segment in np.arange(0.05, 1.05, 0.05):
-        current_seg = _process_communities_data(data, segment)
+        current_seg = _process_communities_data(data, segment, cursor)
         ids, words = map(list, zip(*current_seg))
         # for group intervals used in mark_data.py
         points = range(26)
@@ -235,11 +229,13 @@ def save_communities():
             save_community(cursor, id, current_community)
 
 
-# save_communities()
-# create_and_save_models()
-# apply_saved_models()
 
+if __name__ == '__main__':
+    db = sqlite3.connect('db/users.db')
+    cursor = db.cursor()
+    save_communities(cursor)
+    create_and_save_models(cursor)
+    apply_saved_models(cursor)
 
-
-# db.commit()
-# db.close()
+    db.commit()
+    db.close()

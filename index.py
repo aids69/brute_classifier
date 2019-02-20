@@ -20,13 +20,12 @@ def create_cluster_vec(cursor, id):
     clusters = imp.statistics_
 
     data = get_user_by_id(cursor, id)
-    keys = [key for key in data.keys() if key in allowed_fields]
+    keys = list(set(data.keys()) & set(allowed_fields))
 
     if 'communities' in keys:
         keys.remove('communities')
         amount_of_coms = len(data['communities'])
-        arr_of_coms = range(amount_of_coms)
-        arr_of_coms = ['com_' + str(e) for e in arr_of_coms]
+        arr_of_coms = ['com_' + str(e) for e in range(amount_of_coms)]
         allowed_fields += arr_of_coms
 
     for key in keys:
@@ -58,8 +57,8 @@ def create_cluster_vec(cursor, id):
                 insert_pos = allowed_fields.index(name)
                 clusters[insert_pos] = prediction
     field_names = ['about', 'activities', 'books',
-                      'games', 'interests', 'personal_inspired_by', 'movies',
-                      'music', 'status']
+                   'games', 'interests', 'personal_inspired_by', 'movies',
+                   'music', 'status']
     field_names += ['communities_' + str(e) for e in range(26)]
     for i, cluster in enumerate(clusters):
         add_cluster(cursor, field_names[i], cluster, id)
@@ -85,19 +84,17 @@ id = sys.argv[1]
 
 def proccess_req(id):
     db = sqlite3.connect('db/users.db', timeout=10)
+    cursor = db.cursor()
+
     call('node addPersonById.js ' + str(id), cwd='/home/ftlka/Documents/diploma/fetcher', shell=True)
     # for cases when screen_name is passed
-    id = str(open('current_id.txt', 'r').read())
+    with open('current_id.txt', 'r') as f:
+        id = str(f.read())
     print('predicting...')
-    db.commit()
 
-    cursor = db.cursor()
     create_cluster_vec(cursor, id)
     print('created cluster')
-    db.commit()
-    db.close()
-    db = sqlite3.connect('db/users.db', timeout=10)
-    cursor = db.cursor()
+
     brute = mark_next_free_person(cursor, id)
     print(brute)
 
@@ -113,20 +110,11 @@ def proccess_req(id):
     forest_present_id = tree_clf.predict(X)[0]
     print(forest_present_id)
 
-    file = open('../simple_interface/results.txt', 'w')
-    file.write(str(brute) + ' ' + str(forest_present_id) + ' ' + str(w2v))
+    with open('../simple_interface/results.txt', 'w') as file:
+        file.write(str(brute) + ' ' + str(forest_present_id) + ' ' + str(w2v))
 
     db.commit()
     db.close()
-# print('present id is ' + present_id)
-# print('tree id:', present_forest_id)
-# print('boost present id:', boost_present_id)
-#
-# print(get_present_by_id(cursor, present_id))
-# print(get_present_by_id(cursor, present_forest_id))
-# print(get_present_by_id(cursor, boost_present_id))
+
 
 proccess_req(id)
-
-# db.commit()
-# db.close()
