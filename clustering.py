@@ -1,7 +1,8 @@
 import numpy as np
 from sklearn.externals import joblib
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
 
 import sqlite3
 from db_api import get_records_by_field, add_cluster,\
@@ -99,32 +100,47 @@ def _fit_and_save_models(data, cluster_amount, file_name, vec_file_name):
 
 def _fit_and_save_com_models(cluster_amount):
     """Fits communities vectorizers and models and saves them"""
-    all_info = get_all_communities_info(cursor)[:300000]
-    print('got data')
-    all_info = list(set([' '.join(el[1:]).strip() for el in all_info]))
-    print('Data is ready')
-    print(len(all_info))
-    vectorizer = TfidfVectorizer(max_df=0.35, min_df=0.025)
-    vectorizer.fit(all_info)
-    print('Data is fit')
-    save_model(vectorizer, 'communities_vec.pkl')
-    del all_info, vectorizer
-    print('Vectorizer is saved')
+    # all_info = get_all_communities_info(cursor)[:250000]
+    # print('got data')
+    # all_info = list(set([' '.join(el[1:]).strip() for el in all_info]))
+    # print('Data is ready')
+    # print(len(all_info))
+    # vectorizer = TfidfVectorizer(max_df=0.4, min_df=10)
+    # # vectorizer = HashingVectorizer()
+    # vectorizer.fit(all_info)
+    # print('Data is fit')
+    # save_model(vectorizer, 'communities_vec.pkl')
+    # del all_info, vectorizer
+    # print('Vectorizer is saved')
     # return
 
-    current_communities = [el for el in get_first_communities_info(cursor)]
-    flat_list = [item for sublist in current_communities for item in sublist if item]
+    # current_communities = [el[1:] for el in get_all_communities_info(cursor)]
+    # flat_list = list(set([item for sublist in current_communities for item in sublist if item]))
+    # save_model(flat_list, 'prefetched.pkl')
+    flat_list = load_model('prefetched.pkl')
+
     print(len(flat_list))
 
+    fit_reducer_X = flat_list[:350000]
     vectorizer = load_model('communities_vec.pkl')
+    fit_reducer_X = vectorizer.transform(fit_reducer_X)
+    print('transformed')
+
+    pca = TruncatedSVD(n_components=300)
+    pca.fit(fit_reducer_X)
+    save_model(pca, 'pca.pkl')
+    print('fit reducer')
+    del fit_reducer_X
+    # pca = load_model('pca.pkl')
+
     X = vectorizer.transform(flat_list)
-    del current_communities, flat_list, vectorizer
+    X = pca.transform(X)
+    del flat_list, vectorizer, pca
 
     print('Created vectorizer')
 
-    model = KMeans(n_clusters=cluster_amount, verbose=True, init='random')
-    model.fit(X)
-    save_model(model, 'communities.pkl')
+    mini_model = MiniBatchKMeans(n_clusters=cluster_amount, batch_size=1000, verbose=True, n_init=20).fit(X)
+    save_model(mini_model, 'mini.pkl')
     print('Created kmeans')
 
 
@@ -146,17 +162,17 @@ def _predict_and_save_communities():
     ids = [el[0] for el in get_communities_info(cursor, 'id')]
     # for group intervals used in mark_data.py
     points = range(26)
+    model = load_model('mini.pkl')
+    vectorizer = load_model('communities_vec.pkl')
 
     for point in points:
         # slicing some range of communities
         current_communities = [el[0] for el in get_communities_info(cursor, 'com_' + str(point))]
         print(point)
 
-        model = load_model('communities.pkl')
-        vectorizer = load_model('communities_vec.pkl')
-
         X = vectorizer.transform(current_communities)
-        predicts = model.predict(X)
+        pca = load_model('pca.pkl')
+        predicts = model.predict(pca.transform(X))
         print('Applied models, saving to db')
 
         # save predictions to db
@@ -224,5 +240,6 @@ def save_communities():
 # apply_saved_models()
 
 
-db.commit()
-db.close()
+
+# db.commit()
+# db.close()

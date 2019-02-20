@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 
 from sklearn.naive_bayes import ComplementNB
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.ensemble import RandomForestClassifier as forest
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble import AdaBoostClassifier
@@ -25,8 +26,11 @@ def prepare_data(test_size=0.3):
 
     # deleting communities - 4th column
     X = np.delete(X, 3, 1)
+
     imp = SimpleImputer(missing_values=None, strategy='most_frequent', copy=False)
     imp.fit_transform(X)
+    save_model(imp, 'imp.pkl')
+
     X = np.array([[int(x) for x in lst] for lst in X])
 
     ids, y = zip(*y_and_ids)
@@ -42,8 +46,6 @@ def prepare_data(test_size=0.3):
     y_train = np.array(y_train)
     y_test = np.array(y_test)
     print(np.array(y).shape)
-    # ids_train = np.array(ids_train)
-    # ids_test = np.array(ids_test)
     return X_train, X_test, y_train, y_test, X, y, ids_test
 
 
@@ -52,30 +54,32 @@ def naive_bayes(X_train, X_test, y_train, y_test):
     clf.fit(X_train, y_train)
     print('Naive bayes', accuracy_score(y_test, clf.predict(X_test)))
     # clf.fit(X, y)
-    # save_model(clf, 'naive_b.pkl')
+    save_model(clf, 'naive_b.pkl')
+
+
+def mult_bayes(X_train, X_test, y_train, y_test):
+    clf = MultinomialNB()
+    clf.fit(X_train, y_train)
+    print('Mult bayes', accuracy_score(y_test, clf.predict(X_test)))
+    # clf.fit(X, y)
+    save_model(clf, 'naive_b_mult.pkl')
 
 
 def rand_forest(X_train, X_test, y_train, y_test, ids_test):
     forest_clf = forest(n_estimators=50)
     forest_clf.fit(X_train, y_train)
     pred = forest_clf.predict(X_test)
-    # from db_api import get_user_by_id
-    # for i in range(4):
-    #     if y_test[i] != pred[i]:
-    #         id = ids_test[i]
-    #         print(get_user_by_id(cursor, id))
-    #         print('Actual:', y_test[i], 'Predicted:', pred[i])
     print('Random forest', accuracy_score(y_test, pred))
     # forest_clf.fit(X, y)
-    # save_model(forest_clf, 'forest.pkl')
+    save_model(forest_clf, 'forest.pkl')
 
 
 def grad_boost(X_train, X_test, y_train, y_test):
-    boost_clf = GradientBoostingClassifier()
+    boost_clf = GradientBoostingClassifier(n_estimators=50)
     boost_clf.fit(X_train, y_train)
     print('Gradient boosting', accuracy_score(y_test, boost_clf.predict(X_test)))
     # boost_clf.fit(X, y)
-    # save_model(boost_clf, 'boost.pkl')
+    save_model(boost_clf, 'boost.pkl')
 
 
 def ada_boost(X_train, X_test, y_train, y_test):
@@ -83,15 +87,24 @@ def ada_boost(X_train, X_test, y_train, y_test):
     ada_boost_clf.fit(X_train, y_train)
     print('Ada boost', accuracy_score(y_test, ada_boost_clf.predict(X_test)))
     # ada_boost_clf.fit(X, y)
-    # save_model(ada_boost_clf, 'boost.pkl')
+    save_model(ada_boost_clf, 'ada.pkl')
 
 
-X_train, X_test, y_train, y_test, X, y, ids_test = prepare_data()
-naive_bayes(X_train, X_test, y_train, y_test)
-rand_forest(X_train, X_test, y_train, y_test, ids_test)
-grad_boost(X_train, X_test, y_train, y_test)
-ada_boost(X_train, X_test, y_train, y_test)
+# X_train, X_test, y_train, y_test, X, y, ids_test = prepare_data()
+# naive_bayes(X_train, X_test, y_train, y_test)
+# mult_bayes(X_train, X_test, y_train, y_test)
+# rand_forest(X_train, X_test, y_train, y_test, ids_test)
+# grad_boost(X_train, X_test, y_train, y_test)
+# ada_boost(X_train, X_test, y_train, y_test)
+from mark_data import mark_next_free_person
 
+users = cursor.execute('SELECT * FROM classes WHERE seen_by_brute IS NOT NULL').fetchall()
+ids = [user[0] for user in users]
+brute_results = [None] * len(users)
+w2v_results = [None] * len(users)
 
-db.commit()
-db.close()
+for i, id in enumerate(ids):
+    brute_results[i] = mark_next_free_person()
+
+# db.commit()
+# db.close()

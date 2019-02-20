@@ -2,10 +2,9 @@ import sqlite3
 import random
 from db_api import get_key_words, get_user, assign_present, drop_presents, add_prediction
 
-db = sqlite3.connect('db/users.db')
-cursor = db.cursor()
+# db = sqlite3.connect('db/users.db')
+# cursor = db.cursor()
 
-key_words = get_key_words(cursor)
 
 
 def count_word(user, words):
@@ -61,12 +60,14 @@ def count_word(user, words):
     return counter
 
 
-def mark_next_free_person():
+def mark_next_free_person(cursor, id=-1):
     # make key words' order random for cases with more than 1 max
+    key_words = get_key_words(cursor)
+
     keys = list(key_words.keys())
     random.shuffle(keys)
 
-    current_user = get_user(cursor)
+    current_user = get_user(cursor, id)
 
     max = 0
     most_freq_word_id = -1
@@ -80,18 +81,20 @@ def mark_next_free_person():
         print('Could not find anything, adding special present for user_id=' + str(current_user['id']))
         assign_present(cursor, current_user['id'], 20)
         add_prediction(cursor, current_user['id'], 20)
+        most_freq_word_id = 20
     else:
         # print('https://vk.com/id' + str(current_user['id']), key_words[most_freq_word_id])
         assign_present(cursor, current_user['id'], most_freq_word_id)
         add_prediction(cursor, current_user['id'], most_freq_word_id)
+    return most_freq_word_id
 
 
 # drop_presents(cursor)
-for i in range(0, 2000):
-    if i % 100 == 0:
-        print(str(i) + ' - ' + str(100 * i / 2000) + '%')
-    mark_next_free_person()
+# for i in range(0, 100000):
+#     if i % 100 == 0:
+#         print(str(i) + ' - ' + str(100 * i / 100000) + '%')
+#     mark_next_free_person()
 
 
-db.commit()
-db.close()
+# db.commit()
+# db.close()

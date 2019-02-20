@@ -1,7 +1,10 @@
 import re
 import numpy as np
+import sqlite3
 
 pattern = re.compile('([^\s\w]|_)+')
+db = sqlite3.connect('db/users.db')
+cursor = db.cursor()
 
 
 def format_string(str):
@@ -22,8 +25,8 @@ def get_group_info(crs, id):
         return ['']
 
     res = []
-    # 2 -> name, 9 -> description, 10 -> status
-    indices = [2, 9, 10]
+    # 9 -> description, 10 -> status
+    indices = [9, 10]
     for i in indices:
         if current_group[i]:
             res += format_string(current_group[i])
@@ -40,19 +43,24 @@ def get_key_words(crs):
     return dict
 
 
-def get_user(crs):
+def get_user(crs, id=-1):
     """
         Gets first user with groups and no present selected yet
         returns informative fields + id
     """
-    all_users = crs.execute('SELECT * FROM users WHERE seen_by_brute IS NULL')
-    current_user = all_users.fetchone()
-    seen_ids = [str(current_user[0])]
-
-    # looking for a user without present and with groups
-    while current_user[117] or current_user[18] == '-' or len(current_user[18].split(',')) < 10:
+    if id == -1:
+        all_users = crs.execute('SELECT * FROM users WHERE seen_by_brute IS NULL')
         current_user = all_users.fetchone()
-        seen_ids.append(str(current_user[0]))
+        seen_ids = [str(current_user[0])]
+
+        # looking for a user without present and with groups
+        while current_user[117] or current_user[18] == '-' or len(current_user[18].split(',')) < 10:
+            current_user = all_users.fetchone()
+            seen_ids.append(str(current_user[0]))
+    else:
+        all_users = crs.execute('SELECT * FROM users WHERE id = ' + str(id))
+        current_user = all_users.fetchone()
+        seen_ids = [str(current_user[0])]
 
     crs.execute('UPDATE users SET seen_by_brute = 1 WHERE id IN (' + ','.join(seen_ids) + ')')
 
@@ -139,11 +147,11 @@ def _create_sql_values(ids, values):
 def add_cluster(crs, cluster_name, value, id):
     """Adds predicted cluster to classes table for specific id"""
     cluster_name += '_cluster'
-    # crs.execute('INSERT OR IGNORE INTO classes(person_id, ' + cluster_name
-    #             + ') VALUES ' + '(' + str(id) + ',' + str(value) + ')')
+    crs.execute('INSERT OR IGNORE INTO classes(person_id, ' + cluster_name
+                + ') VALUES ' + '(' + str(id) + ',' + str(value) + ')')
     # if id's already in the table, we need to update
-    # if crs.rowcount == 0:
-    crs.execute('UPDATE classes SET ' + cluster_name +
+    if crs.rowcount == 0:
+        crs.execute('UPDATE classes SET ' + cluster_name +
                 ' = ' + str(value) + ' WHERE person_id = ' + str(id))
 
 
@@ -172,11 +180,9 @@ def get_data(crs, person_id=-1):
 
     for current_user in classes:
         current_user = np.array(current_user)
-        for i, e in enumerate(current_user):
-            if e is None:
-                current_user[i] = None
         X.append(np.array(current_user[2:]))
         y_and_ids.append(np.array(current_user[:2]))
+
     return np.array(X), np.array(y_and_ids)
 
 
@@ -190,6 +196,11 @@ def save_community(crs, id, communities):
     field_names = ', '.join(['com_' + str(i) for i in range(26)])
     crs.execute('INSERT OR IGNORE INTO formatted_communities(id, ' + field_names + ') ' +
                 'VALUES(' + str(id) + ', "' + communities + '")')
+
+def drop_communities(crs):
+    crs.execute('DROP TABLE formatted_communities')
+    field_names = ', '.join(['com_' + str(i) + ' TEXT' for i in range(26)])
+    crs.execute('CREATE TABLE formatted_communities ( id INT, ' + field_names + ' )')
 
 
 def update_community(crs, id, field, value):
