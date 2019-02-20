@@ -1,7 +1,23 @@
-# brute_classifier
-Brute force classifier for analyzing quality of main classifier
+# Models for predicting presents
 
-## key words we use for marking data (Dec 2)
+## How to start it
+Either by using simple interface or by:
+`python3 index.py vk_id`
+where vk_id can be user's nickname or numeric id
+
+## Description
+The project itself consists of 3 parts:
+- brute force classification
+- classifying cluster vectors
+- searching for closest class with word2vec
+
+file mark_data.py contains brute classifier to semi-manually label data. It just searches for substrings and selects class that scored the most
+clustering.py makes cluster vector and saves it to db. This cluster vector is made for most informative fields of the user's account
+classifiers.py contains several classifiers and a way to retrieve cluster vectors from db. With labels made by brute
+word2vec_clf.py uses pretrained model from https://rusvectores.org/ru/models/ and ranks all classes by similarity to user profile
+index.py starts all other classifiers and prints the results of their work
+
+## key words we use for marking data
 1 - мужчин мужик брутал мужск арми бокс рукопаш воен джентельм кача барбер кальян рыбалк охот гараж футбол мяч
 
 2 - кошк коты коти cat собак бездомн приют животн
