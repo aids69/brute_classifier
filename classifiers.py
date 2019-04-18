@@ -9,8 +9,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import ComplementNB, MultinomialNB
 from sklearn.tree import DecisionTreeClassifier
 
-from clustering import save_model
-from db_api import get_data
+from .clustering import save_model
+from .db_api import get_data
 
 
 def prepare_data(cursor, test_size=0.3):
@@ -84,14 +84,13 @@ def ada_boost(X_train, X_test, y_train, y_test):
 
 
 if __name__ == '__main__':
-    db = sqlite3.connect('db/users.db')
-    cursor = db.cursor()
-    X_train, X_test, y_train, y_test, X, y, ids_test = prepare_data(cursor)
-    naive_bayes(X_train, X_test, y_train, y_test)
-    mult_bayes(X_train, X_test, y_train, y_test)
-    rand_forest(X_train, X_test, y_train, y_test, ids_test)
-    grad_boost(X_train, X_test, y_train, y_test)
-    ada_boost(X_train, X_test, y_train, y_test)
+    with sqlite3.connect('db/users.db') as db:
+        cursor = db.cursor()
+        X_train, X_test, y_train, y_test, X, y, ids_test = prepare_data(cursor)
+        naive_bayes(X_train, X_test, y_train, y_test)
+        mult_bayes(X_train, X_test, y_train, y_test)
+        rand_forest(X_train, X_test, y_train, y_test, ids_test)
+        grad_boost(X_train, X_test, y_train, y_test)
+        ada_boost(X_train, X_test, y_train, y_test)
 
-    db.commit()
-    db.close()
+        db.commit()

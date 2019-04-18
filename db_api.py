@@ -3,7 +3,7 @@ import re
 import sqlite3
 
 pattern = re.compile('([^\s\w]|_)+')
-db = sqlite3.connect('db/users.db')
+db = sqlite3.connect('/home/ftlka/Documents/diploma/brute_classifier/db/users.db')
 cursor = db.cursor()
 
 

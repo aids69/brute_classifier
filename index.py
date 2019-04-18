@@ -2,13 +2,13 @@ import numpy as np
 import sqlite3
 import sys
 
-from clustering import load_model
+from .clustering import load_model
 from subprocess import call
 # for example python3 index.py some_id
 
-from db_api import add_cluster, get_data, get_user_by_id
-from mark_data import mark_next_free_person
-from word2vec_clf import find_most_similar_class
+from .db_api import add_cluster, get_data, get_user_by_id
+from .mark_data import mark_next_free_person
+from .word2vec_clf import find_most_similar_class
 
 
 def create_cluster_vec(cursor, id):
@@ -79,42 +79,40 @@ def get_word2vec_class(cursor, id):
     return key
 
 
-id = sys.argv[1]
-
-
 def proccess_req(id):
-    db = sqlite3.connect('db/users.db', timeout=10)
-    cursor = db.cursor()
+    with sqlite3.connect('/home/ftlka/Documents/diploma/brute_classifier/db/users.db', timeout=10) as db:
+        cursor = db.cursor()
 
-    call('node addPersonById.js ' + str(id), cwd='/home/ftlka/Documents/diploma/fetcher', shell=True)
-    # for cases when screen_name is passed
-    with open('current_id.txt', 'r') as f:
-        id = str(f.read())
-    print('predicting...')
+        call('node addPersonById.js ' + str(id), cwd='/home/ftlka/Documents/diploma/fetcher', shell=True)
+        # for cases when screen_name is passed
+        with open('/home/ftlka/Documents/diploma/brute_classifier/current_id.txt', 'r') as f:
+            id = str(f.read())
+        print('predicting...')
 
-    create_cluster_vec(cursor, id)
-    print('created cluster')
+        create_cluster_vec(cursor, id)
+        print('created cluster')
 
-    brute = mark_next_free_person(cursor, id)
-    print(brute)
+        brute = mark_next_free_person(cursor, id)
+        print(brute)
 
-    w2v = get_word2vec_class(cursor, id)
-    print(w2v)
+        w2v = get_word2vec_class(cursor, id)
+        print(w2v)
 
-    # we need only X for now
-    X, y_and_id = get_data(cursor, id)
-    print(X)
-    X = np.delete(X, 3, 1)
+        # we need only X for now
+        X, y_and_id = get_data(cursor, id)
+        print(X)
+        X = np.delete(X, 3, 1)
 
-    tree_clf = load_model('forest.pkl')
-    forest_present_id = tree_clf.predict(X)[0]
-    print(forest_present_id)
+        tree_clf = load_model('forest.pkl')
+        forest_present_id = tree_clf.predict(X)[0]
+        print(forest_present_id)
 
-    with open('../simple_interface/results.txt', 'w') as file:
-        file.write(str(brute) + ' ' + str(forest_present_id) + ' ' + str(w2v))
+        with open('/home/ftlka/Documents/diploma/simple_interface/results.txt', 'w') as file:
+            file.write(str(brute) + ' ' + str(forest_present_id) + ' ' + str(w2v))
 
-    db.commit()
-    db.close()
+        db.commit()
 
 
-proccess_req(id)
+if __name__ == '__main__':
+    id = sys.argv[1]
+    proccess_req(id)

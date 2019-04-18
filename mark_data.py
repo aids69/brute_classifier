@@ -1,7 +1,7 @@
 import random
 import sqlite3
 
-from db_api import get_key_words, get_user, assign_present, drop_presents, add_prediction
+from .db_api import get_key_words, get_user, assign_present, drop_presents, add_prediction
 
 
 def count_word(user, words):

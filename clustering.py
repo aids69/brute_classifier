@@ -6,18 +6,18 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.externals import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from db_api import get_records_by_field, add_cluster,\
+from .db_api import get_records_by_field, add_cluster,\
     format_string, get_group_info, save_community, get_communities_info
 
 
 def save_model(model, file_name):
     """Saves model to a specific file"""
-    joblib.dump(model, './models/' + file_name)
+    joblib.dump(model, '/home/ftlka/Documents/diploma/brute_classifier/models/' + file_name)
 
 
 def load_model(file_name):
     """Loads model from a file it was saved to"""
-    model = joblib.load('./models/' + file_name)
+    model = joblib.load('/home/ftlka/Documents/diploma/brute_classifier/models/' + file_name)
     return model
 
 
@@ -232,11 +232,10 @@ def save_communities(cursor):
 
 
 if __name__ == '__main__':
-    db = sqlite3.connect('db/users.db')
-    cursor = db.cursor()
-    save_communities(cursor)
-    create_and_save_models(cursor)
-    apply_saved_models(cursor)
+    with sqlite3.connect('db/users.db') as db:
+        cursor = db.cursor()
+        save_communities(cursor)
+        create_and_save_models(cursor)
+        apply_saved_models(cursor)
 
-    db.commit()
-    db.close()
+        db.commit()

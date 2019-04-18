@@ -6,8 +6,8 @@ from nltk.tag import pos_tag, map_tag
 from ufal.udpipe import Model, Pipeline
 
 
-model = KeyedVectors.load_word2vec_format('./models/wiki_model.bin', binary=True)
-modelfile = './models/udpipe_syntagrus.model'
+model = KeyedVectors.load_word2vec_format('/home/ftlka/Documents/diploma/brute_classifier/models/wiki_model.bin', binary=True)
+modelfile = '/home/ftlka/Documents/diploma/brute_classifier/models/udpipe_syntagrus.model'
 
 clusters = {
     1: ['мужчина_NOUN', 'армия_NOUN', 'кальян_NOUN', 'рыбалка_NOUN', 'футбол_NOUN',
