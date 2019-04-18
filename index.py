@@ -107,12 +107,14 @@ def proccess_req(id):
         forest_present_id = tree_clf.predict(X)[0]
         print(forest_present_id)
 
-        with open('/home/ftlka/Documents/diploma/simple_interface/results.txt', 'w') as file:
-            file.write(str(brute) + ' ' + str(forest_present_id) + ' ' + str(w2v))
-
         db.commit()
+
+        return brute, forest_present_id, w2v
 
 
 if __name__ == '__main__':
     id = sys.argv[1]
-    proccess_req(id)
+    brute, forest_present_id, w2v = proccess_req(id)
+
+    with open('/home/ftlka/Documents/diploma/simple_interface/results.txt', 'w') as file:
+        file.write(str(brute) + ' ' + str(forest_present_id) + ' ' + str(w2v))
