@@ -1,14 +1,14 @@
-import sys
 import numpy as np
-from subprocess import call
+import sqlite3
+import sys
+
 from clustering import load_model
+from subprocess import call
 # for example python3 index.py some_id
 
-import sqlite3
 from db_api import add_cluster, get_data, get_user_by_id
-from word2vec_clf import find_most_similar_class
-
 from mark_data import mark_next_free_person
+from word2vec_clf import find_most_similar_class
 
 
 def create_cluster_vec(cursor, id):

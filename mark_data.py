@@ -1,10 +1,7 @@
-import sqlite3
 import random
+import sqlite3
+
 from db_api import get_key_words, get_user, assign_present, drop_presents, add_prediction
-
-# db = sqlite3.connect('db/users.db')
-# cursor = db.cursor()
-
 
 
 def count_word(user, words):
@@ -89,12 +86,15 @@ def mark_next_free_person(cursor, id=-1):
     return most_freq_word_id
 
 
-# drop_presents(cursor)
-# for i in range(0, 100000):
-#     if i % 100 == 0:
-#         print(str(i) + ' - ' + str(100 * i / 100000) + '%')
-#     mark_next_free_person()
+if __name__ == '__main__':
+    db = sqlite3.connect('db/users.db')
+    cursor = db.cursor()
 
+    # drop_presents(cursor)
+    for i in range(0, 100000):
+        if i % 100 == 0:
+            print(str(i) + ' - ' + str(100 * i / 100000) + '%')
+        mark_next_free_person()
 
-# db.commit()
-# db.close()
+    db.commit()
+    db.close()

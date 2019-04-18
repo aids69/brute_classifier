@@ -1,8 +1,9 @@
-from gensim.models import KeyedVectors
-from ufal.udpipe import Model, Pipeline
 import nltk
-from nltk.tag import pos_tag, map_tag
 import re
+
+from gensim.models import KeyedVectors
+from nltk.tag import pos_tag, map_tag
+from ufal.udpipe import Model, Pipeline
 
 
 model = KeyedVectors.load_word2vec_format('./models/wiki_model.bin', binary=True)
@@ -163,5 +164,4 @@ def find_most_similar_class(user_info):
         print(val)
 
     return evaluation[0][0], evaluation[0][1], evaluation[0][2]
-
 

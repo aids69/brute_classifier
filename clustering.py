@@ -1,10 +1,11 @@
 import numpy as np
-from sklearn.externals import joblib
-from sklearn.cluster import KMeans, MiniBatchKMeans
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import TruncatedSVD
-
 import sqlite3
+
+from sklearn.cluster import KMeans, MiniBatchKMeans
+from sklearn.decomposition import TruncatedSVD
+from sklearn.externals import joblib
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 from db_api import get_records_by_field, add_cluster,\
     format_string, get_group_info, save_community, get_communities_info
 

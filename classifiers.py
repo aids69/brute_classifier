@@ -1,20 +1,16 @@
 import numpy as np
+import sqlite3
 
-from sklearn.model_selection import train_test_split
-from sklearn.impute import SimpleImputer
-
-from sklearn.naive_bayes import ComplementNB
-from sklearn.naive_bayes import MultinomialNB
 from sklearn.ensemble import RandomForestClassifier as forest
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier, AdaBoostClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import ComplementNB, MultinomialNB
 from sklearn.tree import DecisionTreeClassifier
 
-from sklearn.metrics import accuracy_score
-
-import sqlite3
-from db_api import get_data
 from clustering import save_model
+from db_api import get_data
 
 
 def prepare_data(cursor, test_size=0.3):

@@ -1,5 +1,5 @@
-import re
 import numpy as np
+import re
 import sqlite3
 
 pattern = re.compile('([^\s\w]|_)+')
