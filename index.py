@@ -9,6 +9,7 @@ from subprocess import call
 from .db_api import add_cluster, get_data, get_user_by_id
 from .mark_data import mark_next_free_person
 from .word2vec_clf import find_most_similar_class
+from .predictors import brute, classifier, w2v
 
 
 def create_cluster_vec(cursor, id):
@@ -77,6 +78,14 @@ def get_word2vec_class(cursor, id):
     key, value, words = find_most_similar_class(res_str)
     print(key, value, words)
     return key
+
+
+def new_proccess_req(id, user, communities):
+    """
+    Gets info about the user and returns list of 3 ints - predictions
+    """
+    print('predicting...')
+    return brute(user, communities), classifier(user, communities), w2v(user, communities)
 
 
 def proccess_req(id):
