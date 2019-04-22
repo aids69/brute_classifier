@@ -58,7 +58,7 @@ index.py starts all other classifiers and prints the results of their work
 
 20 - special id for people with non-informative groups
 
-21 - наука science прогресс интеллект
+21 - наука science прогресс интеллект обучени learn
 
 22 - авто машин шины дороги дорогах ралли дтп внедорожн
 
