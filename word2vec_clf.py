@@ -43,7 +43,7 @@ clusters = {
     11: ['мама_NOUN', 'семья_NOUN', 'воспитание_NOUN',
          'mother_NOUN', 'family_NOUN', 'children_NOUN'],
 
-    12: ['тату_NOUN', 'tattoo_NOUN'],
+    12: ['тату_NOUN', 'tattoo_NOUN', 'татуировка_NOUN'],
 
     13: ['университет_NOUN', 'студент_NOUN',
          'university_NOUN', 'student_NOUN'],
@@ -155,13 +155,12 @@ def find_most_similar_class(user_info):
     lexemes = _filter_model_words(russian_lexems + english_lexemes)
 
     evaluation = []
-    for key in clusters.keys():
-        current_value = model.wv.n_similarity(lexemes, clusters[key])
-        evaluation.append((key, current_value, clusters[key]))
+    for key, cluster in clusters.items():
+        current_value = model.wv.n_similarity(lexemes, cluster)
+        evaluation.append((key, current_value, cluster))
     evaluation.sort(key=lambda x: x[1], reverse=True)
 
-    for val in evaluation:
+    for i, val in zip(range(7), evaluation):
         print(val)
 
     return evaluation[0][0], evaluation[0][1], evaluation[0][2]
-

@@ -1,8 +1,8 @@
 import numpy as np
-import random
 import re
 from .keywords import keywords
 from .clustering import load_model
+from .word2vec_clf import find_most_similar_class
 
 
 pattern = re.compile('([^\s\w]|_)+')
@@ -134,4 +134,15 @@ def classifier(user, communities):
 
 
 def w2v(user, communities):
-    return 3
+    allowed_fields = ['about', 'activities', 'books', 'communities',
+                      'games', 'interests', 'inspired_by', 'movies',
+                      'music', 'status']
+
+    united_values = [' '.join(user[key]) for key in user if key in allowed_fields]
+    for com in communities:
+        united_values += [_create_com_info_string(com)]
+    flattened = [sublist for sublist in united_values]
+    res_str = ' '.join(flattened)
+
+    key, value, words = find_most_similar_class(res_str)
+    return key
