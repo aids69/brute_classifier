@@ -152,7 +152,7 @@ def add_cluster(crs, cluster_name, value, id):
     # if id's already in the table, we need to update
     if crs.rowcount == 0:
         crs.execute('UPDATE classes SET ' + cluster_name +
-                ' = ' + str(value) + ' WHERE person_id = ' + str(id))
+                    ' = ' + str(value) + ' WHERE person_id = ' + str(id))
 
 
 def create_cluster_info(crs, cluster_name, key_words_arr):
