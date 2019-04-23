@@ -1,7 +1,7 @@
 import random
 import sqlite3
 
-from db_api import get_key_words, get_user, assign_present, drop_presents, add_prediction
+from db_api import get_user, assign_present, add_prediction
 from keywords import keywords as key_words
 
 
@@ -80,7 +80,6 @@ if __name__ == '__main__':
     cursor = db.cursor()
     n = 5000
 
-    # drop_presents(cursor)
     for i in range(n):
         if i % 100 == 0:
             print('{} - {}%'.format(str(i), str(100 * i / n)))
