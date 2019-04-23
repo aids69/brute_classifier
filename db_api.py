@@ -26,8 +26,7 @@ def get_group_info(crs, id):
 
     res = []
     # 9 -> description, 10 -> status
-    indices = [9, 10]
-    for i in indices:
+    for i in [9, 10]:
         if current_group[i]:
             res += format_string(current_group[i])
 
@@ -173,7 +172,7 @@ def get_data(crs, person_id=-1):
     if person_id == -1:
         classes = crs.execute('SELECT * FROM classes WHERE brute IS NOT NULL').fetchall()
     else:
-        classes = crs.execute('SELECT * FROM classes WHERE person_id = ' + person_id).fetchall()
+        classes = crs.execute('SELECT * FROM classes WHERE person_id = ' + str(person_id)).fetchall()
     # person_id, brute, cluster0, cluster1,... => +2
     X = []
     y_and_ids = []

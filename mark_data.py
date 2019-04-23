@@ -1,7 +1,8 @@
 import random
 import sqlite3
 
-from .db_api import get_key_words, get_user, assign_present, drop_presents, add_prediction
+from db_api import get_key_words, get_user, assign_present, drop_presents, add_prediction
+from keywords import keywords as key_words
 
 
 def count_word(user, words):
@@ -9,20 +10,14 @@ def count_word(user, words):
     counter = 0
 
     # 1 - female, 2 - male
-    if 'sex' in user.keys() and user['sex'] == 1 and 'мужчин' in words:
-        return 0
+    if 'sex' in user:
+        if user['sex'] == 1 and 'мужчин' in words:
+            return 0
+        elif user['sex'] == 2 and\
+                len({'макияж', 'девочк', 'мам'}.intersection(words)):
+            return 0
 
-    if 'sex' in user.keys() and user['sex'] == 2 and 'макияж' in words:
-        return 0
-
-    if 'sex' in user.keys() and user['sex'] == 2 and 'девочк' in words:
-        return 0
-
-    if 'sex' in user.keys() and user['sex'] == 2 and 'мам' in words:
-        return 0
-
-    idx = 0
-    for comm in user['communities']:
+    for idx, comm in enumerate(user['communities']):
         if any([s for s in comm if any(xs in s for xs in words)]):
             if idx == 0:
                 counter += 30
@@ -35,12 +30,11 @@ def count_word(user, words):
             elif idx <= 25:
                 counter += 0.1
             else:
-                counter += 0
-        idx += 1
+                break
 
     informative_fields = ['about', 'activities', 'interests', 'inspired_by', 'status']
     for field in informative_fields:
-        if field in user.keys():
+        if field in user:
             counter += 3 * sum(any(xs in s for xs in words) for s in user[field])
 
     # authors or movie names do not correlate with our key words so we add plus one for being filled
@@ -50,7 +44,7 @@ def count_word(user, words):
     }
     half_inf = []
     for key, val in half_informative_fields.items():
-        if key in user.keys():
+        if key in user and user[key]:
             half_inf.append(half_informative_fields[key])
     counter += sum(any(xs in s for xs in words) for s in half_inf)
 
@@ -59,9 +53,7 @@ def count_word(user, words):
 
 def mark_next_free_person(cursor, id=-1):
     # make key words' order random for cases with more than 1 max
-    key_words = get_key_words(cursor)
-
-    keys = list(key_words.keys())
+    keys = list(key_words)
     random.shuffle(keys)
 
     current_user = get_user(cursor, id)
@@ -76,25 +68,23 @@ def mark_next_free_person(cursor, id=-1):
 
     if max == 0:
         print('Could not find anything, adding special present for user_id=' + str(current_user['id']))
-        assign_present(cursor, current_user['id'], 20)
-        add_prediction(cursor, current_user['id'], 20)
         most_freq_word_id = 20
-    else:
-        # print('https://vk.com/id' + str(current_user['id']), key_words[most_freq_word_id])
-        assign_present(cursor, current_user['id'], most_freq_word_id)
-        add_prediction(cursor, current_user['id'], most_freq_word_id)
+    assign_present(cursor, current_user['id'], most_freq_word_id)
+    add_prediction(cursor, current_user['id'], most_freq_word_id)
+
     return most_freq_word_id
 
 
 if __name__ == '__main__':
     db = sqlite3.connect('db/users.db')
     cursor = db.cursor()
+    n = 5000
 
     # drop_presents(cursor)
-    for i in range(0, 100000):
+    for i in range(n):
         if i % 100 == 0:
-            print(str(i) + ' - ' + str(100 * i / 100000) + '%')
-        mark_next_free_person()
+            print('{} - {}%'.format(str(i), str(100 * i / n)))
+        mark_next_free_person(cursor)
 
     db.commit()
     db.close()

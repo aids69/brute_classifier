@@ -9,8 +9,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import ComplementNB, MultinomialNB
 from sklearn.tree import DecisionTreeClassifier
 
-from .clustering import save_model
-from .db_api import get_data
+from clustering import save_model
+from db_api import get_data
 
 
 def prepare_data(cursor, test_size=0.3):

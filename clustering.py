@@ -6,7 +6,7 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.externals import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from .db_api import get_records_by_field, add_cluster,\
+from db_api import get_records_by_field, add_cluster,\
     format_string, get_group_info, save_community, get_communities_info
 
 
